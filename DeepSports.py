@@ -99,20 +99,41 @@ class FUTOTAL:
 
         # Variaveis para o quadrado
         self.quadradoON = False
+        self.frame_rectangle_create = arr.array('i', [])
+        self.coordinates_rectangle_x_init = arr.array('i', [])
+        self.coordinates_rectangle_y_init = arr.array('i', [])
+        self.coordinates_rectangle_x_final = arr.array('i', [])
+        self.coordinates_rectangle_y_final = arr.array('i', [])
+        self.initArray(self.frame_rectangle_create)
+        self.initArray(self.coordinates_rectangle_x_init)
+        self.initArray(self.coordinates_rectangle_y_init)
+        self.initArray(self.coordinates_rectangle_x_final)
+        self.initArray(self.coordinates_rectangle_y_final)
+        self.num_of_click_rectangle = 0
 
         # Variaveis para o seta
+        self.seta_passeON = False
         self.setaON = False
         self.frame_arrow_create = arr.array('i', [])
         self.coordinates_arrow_x_init = arr.array('i', [])
         self.coordinates_arrow_y_init = arr.array('i', [])
         self.coordinates_arrow_x_final = arr.array('i', [])
         self.coordinates_arrow_y_final = arr.array('i', [])
+        self.arrow_type = arr.array('i', [])
         self.initArray(self.frame_arrow_create)
         self.initArray(self.coordinates_arrow_x_init)
         self.initArray(self.coordinates_arrow_y_init)
         self.initArray(self.coordinates_arrow_x_final)
         self.initArray(self.coordinates_arrow_y_final)
+        self.initArray(self.arrow_type)
         self.num_of_click_arrow = 0
+
+        # Variaveis para area entre jogadores
+        self.pollyON = False
+        self.array_lists_polly_players = []
+        self.array_lists_polly_players_ONOFF = []
+        self.count_pollys = -1
+        self.polly_dropON = False
 
         # Definition of the parameters
         self.max_cosine_distance = 0.5
@@ -251,6 +272,7 @@ class FUTOTAL:
         self.line_drop = tk.PhotoImage(file=r'./data/line_drop.png')
         self.quadrado = tk.PhotoImage(file=r'./data/quadrado.png')
         self.seta = tk.PhotoImage(file=r'./data/seta.png')
+        self.seta_yellow = tk.PhotoImage(file=r'./data/seta_passe.png')
         self.icon = tk.PhotoImage(file=r'./data/icon.png')
 
         # here, image option is used to
@@ -274,6 +296,17 @@ class FUTOTAL:
         self.Line_Drop_All.pack(fill=tk.BOTH, side=tk.TOP)
         CreateToolTip(self.Line_Drop_All, text='Click on this button and delete all the lines.')
 
+        self.Polly = tk.Button(m2, text="Draw polly\nbetween players", image=self.line, command=self.pollyONOFF,
+                               compound="top")
+        self.Polly.pack(fill=tk.BOTH, side=tk.TOP)
+        CreateToolTip(self.Polly, text='Click on the players that will be part of the polygon.')
+
+        self.Polly_Drop = tk.Button(m2, text="Remove polly\nbetween players", image=self.line,
+                                    command=self.polly_dropONOFF,
+                                    compound="top")
+        self.Polly_Drop.pack(fill=tk.BOTH, side=tk.TOP)
+        CreateToolTip(self.Polly_Drop, text='Click on the polygon player you want to remove.')
+
         self.Quadrado = tk.Button(m2,text="Draw Area", image=self.quadrado, command=self.quadradoONOFF,compound="top")
         self.Quadrado.pack(fill=tk.BOTH, side=tk.TOP)
         CreateToolTip(self.Quadrado, text='Click on the exact place where the square starts.\n'
@@ -282,6 +315,10 @@ class FUTOTAL:
         self.Seta = tk.Button(m2,text="Draw Movement", image=self.seta, command=self.setaONOFF,compound="top")
         self.Seta.pack(fill=tk.BOTH, side=tk.TOP)
         CreateToolTip(self.Seta, text='Click on the exact spot where the movement starts.\n'
+                                      'And then click on the place where it ends.')
+        self.Seta_Passe = tk.Button(m2, text="Draw Pass", image=self.seta_yellow, command=self.seta_passeONOFF , compound="top")
+        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.TOP)
+        CreateToolTip(self.Seta_Passe, text='Click on the exact spot where the pass starts.\n'
                                       'And then click on the place where it ends.')
 
         self.Icon = tk.Button(m2,text="Select Player", image=self.icon,command=self.selectONOFF,compound="top")
@@ -307,14 +344,15 @@ class FUTOTAL:
                 self.Seta.configure(bg=self.orig_color)
             if self.line_dropON == False:
                 self.Line_Drop.configure(bg=self.orig_color)
+            if self.seta_passeON == False:
+                self.Seta_Passe.configure(bg=self.orig_color)
+            if self.pollyON == False:
+                self.Polly.configure(bg=self.orig_color)
+            if self.polly_dropON ==  False:
+                self.Polly_Drop.configure(bg=self.orig_color)
 
             m2.after(1000, colorsButtons)
         colorsButtons()
-
-    def line_drop_all(self):
-        self.initArray(self.line_player1)
-        self.initArray(self.line_player2)
-        self.start()
 
     def createMenuBottom(self):
         m1 = tk.PanedWindow(orient=tk.VERTICAL)
@@ -364,6 +402,11 @@ class FUTOTAL:
         Pause.pack(fill=tk.BOTH, side=tk.LEFT)
         Next = tk.Button(m3, image=self.imagenext, command=self.next)
         Next.pack(fill=tk.BOTH, side=tk.LEFT)
+
+    def line_drop_all(self):
+        self.initArray(self.line_player1)
+        self.initArray(self.line_player2)
+        self.start()
 
     def show_frame(self):
         global running
@@ -524,14 +567,78 @@ class FUTOTAL:
                 if  int(self.coordinates_arrow_x_final[contador_setas]) == 0 and int(self.coordinates_arrow_y_final[contador_setas]) == 0:
                     end_point = (int(self.coordinates_arrow_x_init[contador_setas]),
                                  int(self.coordinates_arrow_y_init[contador_setas]))
-                color = (0, 255, 0)
+
+                color = (0, 255, 255)
+                if self.arrow_type[contador_setas] == 1:
+                    color = (255,0,0)
+
                 thickness = 2
+
                 if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 25:
-                    cv2.arrowedLine(frame, start_point, end_point,
-                                    color, thickness)
+                    cv2.arrowedLine(frame, start_point, end_point, color, thickness)
+
                 contador_setas = contador_setas + 1
 
+        #criacao de quadrados/ retangulos
+        if self.frame_rectangle_create[0] != 0:
+            contador_rectangulos = 0
+            while contador_rectangulos < arrayLenght(self.frame_rectangle_create):
+                start_point = (int(self.coordinates_rectangle_x_init[contador_rectangulos]),
+                               int(self.coordinates_rectangle_y_init[contador_rectangulos]))
+
+                end_point = (int(self.coordinates_rectangle_x_final[contador_rectangulos]),
+                             int(self.coordinates_rectangle_y_final[contador_rectangulos]))
+
+                if int(self.coordinates_rectangle_x_final[contador_rectangulos]) == 0 and int(
+                        self.coordinates_rectangle_y_final[contador_rectangulos]) == 0:
+                    end_point = (int(self.coordinates_rectangle_x_init[contador_rectangulos]),
+                                 int(self.coordinates_rectangle_y_init[contador_rectangulos]))
+
+                color = (0, 255, 255)
+
+                thickness = 2
+
+                if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < 25:
+                    cv2.rectangle(frame, start_point, end_point,color, thickness)
+
+                contador_rectangulos = contador_rectangulos + 1
+
             # if FLAGS.output:
+
+        # criacao de poligunos entre os jogadores
+
+        if arrayLenght(self.objects_positions_id)>0: # se existir jogadores podemos criar poligonos
+            print(self.get_id_player(2))
+            if len(self.array_lists_polly_players_ONOFF)>0: # se existir poligonos criados podemos criar as linhas
+                contador_polly = 0 # contador de poligonos
+                while contador_polly< len(self.array_lists_polly_players_ONOFF): # enquanto um nao passarmos pelos poligonos todos
+                    if self.array_lists_polly_players_ONOFF[contador_polly] == 1:
+                        pts = []
+                        nppts = np.array([])
+                        arr1 = np.array([])
+                        arr2 = np.array([])
+                        cont = 0 # contador de cada jogador de cada poligono
+                        while cont < len(self.array_lists_polly_players[contador_polly]): # enquanto nao passarmos pelos jogadores todos
+                            coordenates_player_1 = self.get_id_player(int(self.array_lists_polly_players[contador_polly][cont])) # vamos buscar as coordenadas do jogador atual
+
+                            # vamos adicionar ponto a ponto de cada jogador no array de pontos
+                            pts.append([])
+                            pts[cont].append(int(coordenates_player_1[0]))
+                            pts[cont].append(int(coordenates_player_1[1]))
+
+                            arr1 = np.append(arr1,[int(pts[cont][0])])
+                            arr2 = np.append(arr2,[int(pts[cont][1])])
+
+                            # incrementar contador
+                            cont = cont + 1
+
+                        # Draw polygon
+                        nppts = np.stack((arr1, arr2), axis=1)
+                        nppts = nppts.astype(int)
+                        cv2.fillConvexPoly(frame, nppts, (0, 255, 0))
+                    contador_polly = contador_polly + 1
+
+
         # out.write(img)
         # cv2.imshow('output', img)
 
@@ -565,6 +672,23 @@ class FUTOTAL:
         # ms : é o tempo em milissegundos.
         # função : que deve ser chamada.
         # * args : outras opções.
+
+    # vamos criar um array que retorna a posicao atraves do id do jogador
+    def get_id_player(self, number):
+        cont = 0
+        coordenates = (0,0)
+        array = []
+        for o in self.objects_positions_id:
+            x_player = self.objects_positions_x[cont] + (
+                        (self.objects_positions_x_min[cont] - self.objects_positions_x[cont]) / 2)
+            x_player_1 = self.objects_positions_y_min[cont]
+            if o == number:
+                array.insert(0,int(x_player))
+                array.insert(1,int(x_player_1))
+                coordenates = (int(x_player),int(x_player_1))
+            cont = cont + 1
+
+        return array
 
     def contain(self,number):
         for o in self.selecteds:
@@ -667,22 +791,53 @@ class FUTOTAL:
                         #    self.line_player2[contador] = self.line_player2[contador + 1]
                         #    contador = contador + 1
 
+                    if self.pollyON == True:
+                        if self.array_lists_polly_players[self.count_pollys].count(self.objects_positions_id[cont_objects_positions_id]) < 1:
+                            self.array_lists_polly_players[self.count_pollys].append(self.objects_positions_id[cont_objects_positions_id])
+                        print(self.array_lists_polly_players[self.count_pollys])
+
+                    if self.polly_dropON == True:
+                        contador_polly = 0
+                        while contador_polly < len(self.array_lists_polly_players_ONOFF):
+                            if self.array_lists_polly_players[contador_polly].count(self.objects_positions_id[cont_objects_positions_id])>0:
+                                self.array_lists_polly_players_ONOFF[contador_polly] = 0
+                            contador_polly = contador_polly + 1
             cont_objects_positions_id = cont_objects_positions_id + 1
             cont_objects_positions_x = cont_objects_positions_x + 1
             cont_objects_positions_y = cont_objects_positions_y + 1
 
-        if self.setaON == True:
+        if self.setaON == True or self.seta_passeON == True:
             if self.num_of_click_arrow == 0:
                 num = int(arrayLenght(self.frame_arrow_create))
                 self.frame_arrow_create[num] = self.numframes
                 self.coordinates_arrow_x_init[num] = x
                 self.coordinates_arrow_y_init[num] = y
+                if self.setaON == True:
+                    self.arrow_type[num] = 1
+                else:
+                    if self.seta_passeON == True:
+                        self.arrow_type[num] = 2
                 self.num_of_click_arrow = self.num_of_click_arrow + 1
+
             else:
                 num = int(arrayLenght(self.coordinates_arrow_x_final))
                 self.coordinates_arrow_x_final[num] = x
                 self.coordinates_arrow_y_final[num] = y
                 self.num_of_click_arrow = 0
+
+        if self.quadradoON == True:
+            if self.num_of_click_rectangle == 0:
+                num = int(arrayLenght(self.frame_rectangle_create))
+                self.frame_rectangle_create[num] = self.numframes
+                self.coordinates_rectangle_x_init[num] = x
+                self.coordinates_rectangle_y_init[num] = y
+                self.num_of_click_rectangle = self.num_of_click_rectangle + 1
+
+            else:
+                num = int(arrayLenght(self.coordinates_rectangle_x_final))
+                self.coordinates_rectangle_x_final[num] = x
+                self.coordinates_rectangle_y_final[num] = y
+                self.num_of_click_rectangle = 0
 
         self.start()
         time.sleep(0.1)
@@ -697,6 +852,9 @@ class FUTOTAL:
             self.circuloON = False
             self.setaON = False
             self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.selectON=False
             self.start()
@@ -710,6 +868,9 @@ class FUTOTAL:
             self.circuloON = False
             self.setaON = False
             self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.LineON = False
             self.start()
@@ -723,6 +884,9 @@ class FUTOTAL:
             self.circuloON = False
             self.setaON = False
             self.LineON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.line_dropON = False
             self.start()
@@ -736,6 +900,9 @@ class FUTOTAL:
             self.LineON = False
             self.setaON = False
             self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.LineON = False
             self.start()
@@ -749,6 +916,9 @@ class FUTOTAL:
             self.LineON = False
             self.setaON = False
             self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.quadradoON = False
             self.start()
@@ -762,9 +932,63 @@ class FUTOTAL:
             self.LineON = False
             self.quadradoON = False
             self.line_dropON = False
-
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
         else:
             self.setaON = False
+            self.start()
+
+    def seta_passeONOFF(self):
+        if self.seta_passeON == False:
+            self.Seta_Passe.configure(bg="gray")
+            self.seta_passeON = True
+            self.selectON = False
+            self.circuloON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.line_dropON = False
+            self.setaON = False
+            self.pollyON = False
+            self.polly_dropON = False
+        else:
+            self.seta_passeON = False
+            self.start()
+
+    def pollyONOFF(self):
+        if self.pollyON == False:
+            self.Polly.configure(bg="gray")
+            self.pollyON = True
+            self.count_pollys = self.count_pollys + 1
+            self.array_lists_polly_players.append([])
+            self.array_lists_polly_players_ONOFF.append(1)
+            self.selectON = False
+            self.circuloON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.line_dropON = False
+            self.setaON = False
+            self.seta_passeON = False
+            self.polly_dropON = False
+        else:
+            self.pollyON = False
+            self.start()
+
+    def polly_dropONOFF(self):
+        self.polly_dropON = False
+        if self.polly_dropON == False:
+            self.Polly_Drop.configure(bg="gray")
+            self.polly_dropON = True
+            self.pollyON = False
+            self.selectON = False
+            self.circuloON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.line_dropON = False
+            self.setaON = False
+            self.seta_passeON = False
+        else:
+            self.polly_dropON = False
             self.start()
 
     def zoomin(self):
@@ -849,6 +1073,7 @@ class FUTOTAL:
         self.initArray(self.coordinates_arrow_y_init)
         self.initArray(self.coordinates_arrow_x_final)
         self.initArray(self.coordinates_arrow_y_final)
+        self.initArray(self.arrow_type)
 
     def back(self):
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes-100)
@@ -879,136 +1104,3 @@ if __name__ == '__main__':
         pass
 
 
-# motion old
-'''
-
-    def motion(self,event):
-        min_x=0
-        min_y=0
-        x, y = event.x, event.y # x e y sao igualados ao x clicado no evento e ao y clicado no evento
-        print('{}, {}'.format(x, y))
-
-        if self.selectON : # caso a opcao de selecionar esteija ativa o program ira proceder a selecao
-            cont_objects_positions_id = 0
-            cont_objects_positions_x = 0
-            cont_objects_positions_y = 0
-
-            while self.objects_positions_id[cont_objects_positions_id] > 0:
-                if ((x - self.objects_positions_x[cont_objects_positions_x])  < 40) & ((y - self.objects_positions_y[cont_objects_positions_y]) < 60):
-                   if ((x - self.objects_positions_x[cont_objects_positions_x])  >  0) & ((y - self.objects_positions_y[cont_objects_positions_y]) > 0):
-                        count=0
-                        while self.selecteds[count]>0:
-                            count=count+1
-                        if self.contain(self.objects_positions_id[cont_objects_positions_id]) == False:
-                            self.selecteds[count] = self.objects_positions_id[cont_objects_positions_id]
-                        else:
-                            count = 0
-                            while self.selecteds[count] != self.objects_positions_id[cont_objects_positions_id]:
-                                count = count + 1
-                            self.selecteds[count]=0
-
-                cont_objects_positions_id = cont_objects_positions_id+1
-                cont_objects_positions_x = cont_objects_positions_x+1
-                cont_objects_positions_y = cont_objects_positions_y+1
-
-        def arrayLenght(array):
-            cont = 0
-            while array[cont]>0:
-                cont = cont + 1
-            return cont
-
-
-        if self.LineON==True :
-            cont_objects_positions_id = 0
-            cont_objects_positions_x = 0
-            cont_objects_positions_y = 0
-            print("Numero de elementos no line_player1:")
-            print(arrayLenght(self.line_player1))
-            while self.objects_positions_id[cont_objects_positions_id] > 0:
-                if ((x - self.objects_positions_x[cont_objects_positions_x]) < 40) & (
-                        (y - self.objects_positions_y[cont_objects_positions_y]) < 60):
-                    if ((x - self.objects_positions_x[cont_objects_positions_x]) > 0) & (
-                            (y - self.objects_positions_y[cont_objects_positions_y]) > 0):
-
-                        print("line 625")
-                        print(self.line_player1)
-                        print(self.line_player2)
-                        count = 0
-                        if self.players_selecionados == 0:
-                            while self.line_player1[count] > 0:
-                                count = count + 1
-                            # adicionar jogador no array player1
-                            self.line_player1[count] = self.objects_positions_id[cont_objects_positions_id]
-                            self.line_player2[count] = self.objects_positions_id[cont_objects_positions_id]
-                            self.players_selecionados=self.players_selecionados+1
-                        else :
-                            while self.line_player2[count] > 0:
-                                count = count + 1
-                                # adicionar jogador no array player1
-                            self.line_player2[count-1] = self.objects_positions_id[cont_objects_positions_id]
-                            self.players_selecionados = self.players_selecionados + 1
-                            self.players_selecionados = 0
-
-                cont_objects_positions_id = cont_objects_positions_id + 1
-                cont_objects_positions_x = cont_objects_positions_x + 1
-                cont_objects_positions_y = cont_objects_positions_y + 1
-
-
-
-        if self.line_dropON == True:
-            cont_objects_positions_id = 0
-            cont_objects_positions_x = 0
-            cont_objects_positions_y = 0
-            print("Numero de elementos no line_player1:")
-            print(arrayLenght(self.line_player1))
-            while self.objects_positions_id[cont_objects_positions_id] > 0:
-                if ((x - self.objects_positions_x[cont_objects_positions_x]) < 40) & (
-                        (y - self.objects_positions_y[cont_objects_positions_y]) < 60):
-                    if ((x - self.objects_positions_x[cont_objects_positions_x]) > 0) & (
-                            (y - self.objects_positions_y[cont_objects_positions_y]) > 0):
-
-                        count = 0
-                        while self.line_player1[count] != self.objects_positions_id[cont_objects_positions_id] and count< (arrayLenght(self.line_player1)):
-                            count = count + 1
-                        # remover jogador no array player1 e companheiro e companheiro do player1
-                        self.line_player1[count] = 0
-                        self.line_player2[count] = 0
-
-                        # organizar array self.line_player1
-
-                        contador = 0
-                        while self.line_player1[contador] > 0:
-                            contador = contador + 1
-                        while contador < (arrayLenght(self.line_player1)-1):
-                            self.line_player1[contador]=self.line_player1[contador+1]
-                            self.line_player2[contador]=self.line_player2[contador+1]
-                            contador = contador+1
-
-
-                        count=0
-                        while self.line_player2[count] != self.objects_positions_id[cont_objects_positions_id] and count< (arrayLenght(self.line_player2)):
-                            count = count + 1
-                        # remover jogador no array player2 e companheiro do player1
-                        self.line_player1[count] = 0
-                        self.line_player2[count] = 0
-
-                        # organizar array self.line_player2
-                        contador = 0
-                        while self.line_player2[contador] > 0:
-                            contador = contador + 1
-                        while contador < (arrayLenght(self.line_player2) - 1):
-                            self.line_player1[contador] = self.line_player1[contador + 1]
-                            self.line_player2[contador] = self.line_player2[contador + 1]
-                            contador = contador + 1
-
-                cont_objects_positions_id = cont_objects_positions_id + 1
-                cont_objects_positions_x = cont_objects_positions_x + 1
-                cont_objects_positions_y = cont_objects_positions_y + 1
-        print("array das linhas")
-        print(self.line_player1)
-        print(self.line_player2)
-
-        self.start()
-        time.sleep(0.5)
-        self.stop()
-'''
