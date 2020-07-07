@@ -35,6 +35,8 @@ flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_string('video', './data/flamengo.mp4',
                     'path to video file or number for webcam)')
+flags.DEFINE_string('logo', './data/imageminicial.jpeg',
+                    'path to initial logo file')
 flags.DEFINE_string('output', 'output.avi', 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_integer('num_classes', 2, 'number of classes in the model')
@@ -68,21 +70,22 @@ class FUTOTAL:
         self.selectFrame=0
         numframes = 0
         self.numframes = numframes
+        self.isLogo = True
 
         # Variaveis para selecionar jogador
         self.selectON=False
         self.selecteds=arr.array('i', [])
         self.initArray(self.selecteds)
         self.objects_positions_id = arr.array('i', [])
-        self.objects_positions_x = arr.array('i', [])
-        self.objects_positions_y = arr.array('i', [])
         self.objects_positions_x_min = arr.array('i', [])
         self.objects_positions_y_min = arr.array('i', [])
+        self.objects_positions_x_max = arr.array('i', [])
+        self.objects_positions_y_max = arr.array('i', [])
         self.initArray( self.objects_positions_id)
-        self.initArray(self.objects_positions_x)
-        self.initArray(self.objects_positions_y)
         self.initArray(self.objects_positions_x_min)
         self.initArray(self.objects_positions_y_min)
+        self.initArray(self.objects_positions_x_max)
+        self.initArray(self.objects_positions_y_max)
 
         # Variaveis para adicionar linhas
         self.LineON = False
@@ -146,17 +149,11 @@ class FUTOTAL:
         self.metric = nn_matching.NearestNeighborDistanceMetric("cosine", self.max_cosine_distance, self.nn_budget)
         self.tracker = Tracker(self.metric)
 
-
         physical_devices = tf.config.experimental.list_physical_devices('GPU')  ##verifica e há GPUs compativeis
         if len(physical_devices) > 0:
             tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-
-        if FLAGS.tiny:
-            self.yolo = YoloV3Tiny(classes=FLAGS.num_classes)
-        else:
-            print(FLAGS.num_classes)
-            self.yolo = YoloV3(classes=FLAGS.num_classes)
+        self.yolo = YoloV3(classes=FLAGS.num_classes)
 
         self.yolo.load_weights(FLAGS.weights)
         logging.info('weights loaded')
@@ -164,45 +161,27 @@ class FUTOTAL:
         self.class_names = [c.strip() for c in open(FLAGS.classes).readlines()]
         logging.info('classes loaded')
 
-        # width, height = 800, 600
+        self.filename = FLAGS.logo
 
-        # abrir o video
-        #self.filename = askopenfilename(title="Select file", filetypes=(("MP4 files", "*.mp4"),
-        #                                                      #          ("WMV files", "*.wmv"),
-        #                                                                ("AVI files", "*.avi")))
-        self.filename = './data/imageminicial.jpeg'
-        self.createMenuTop()
-        self.createMenuLeft()
-
+        # Captura o video
         try:
             self.cap = cv2.VideoCapture(int(self.filename))
         except:
             self.cap = cv2.VideoCapture(self.filename)
 
-        #NUMBER OF FRAMES
-        property_id = int(cv2.CAP_PROP_FRAME_COUNT)
-        self.length = int(cv2.VideoCapture.get(self.cap, property_id))
-
-        self.out = None
-        if FLAGS.output:
-            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-            codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
-            self.out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
-            # by default VideoCapture returns float instead of int
-            list_file = open('detection.txt', 'w')
-            frame_index = -1
-
+        self.createMenuTop()
+        self.createMenuLeft()
 
         self.master.title("DeepSports - Sports Analysis Software")
         self.master.bind('<Escape>', lambda e: self.master.quit())
         self.lmain = tk.Label(self.master, width=width_screen-300, height=height_screen-225)
         self.lmain.pack()
 
-        self.createMenuBottom()
+        #NUMBER OF FRAMES
+        property_id = int(cv2.CAP_PROP_FRAME_COUNT)
+        self.length = int(cv2.VideoCapture.get(self.cap, property_id))
 
-        self.FLAGS = FLAGS
+        self.createMenuBottom()
 
         self.show_frame()
 
@@ -358,13 +337,11 @@ class FUTOTAL:
         m1 = tk.PanedWindow(orient=tk.VERTICAL)
         m1.pack(fill=tk.BOTH, expand=0,side=tk.BOTTOM)
 
-        # cap.set(cv2.CAP_PROP_FRAME_WIDTH,width)
-        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT,height)
-
         m0 = tk.PanedWindow(m1, orient=tk.HORIZONTAL)
         m1.add(m0)
 
-        self.w2 = tk.Scale(m0, from_=0, to=self.length,variable=self.selectFrame, orient=tk.HORIZONTAL, command=self.selectFrameScale)
+
+        self.w2 = tk.Scale(m0, from_=1, to=1, variable=self.selectFrame, orient=tk.HORIZONTAL, showvalue= 0, command=self.selectFrameScale)
         self.w2.pack(fill=tk.BOTH, side=tk.LEFT,expand=1)
 
         m2 = tk.PanedWindow(m1, orient=tk.HORIZONTAL)
@@ -372,14 +349,25 @@ class FUTOTAL:
 
         var = tk.StringVar()
         labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0)
-        var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
+        if (self.isLogo == False):
+            var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
+        else:
+            var.set("")
         labelframes.pack(fill=tk.BOTH, side=tk.LEFT)
 
-        def labelFrames():
-            var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
-            labelframes.config(text=var)
+        def scaleFrames():
             self.w2.set(self.numframes)
-            m2.after(1000,labelFrames)
+            m2.after(1000, scaleFrames)
+
+        scaleFrames()
+
+        def labelFrames():
+            if (self.isLogo == False):
+                var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
+            else:
+                var.set("")
+            labelframes.config(text=var)
+            m2.after(100, labelFrames)
 
         labelFrames()
         m3 = tk.PanedWindow(m2, orient=tk.HORIZONTAL)
@@ -418,7 +406,7 @@ class FUTOTAL:
 
         print(self.pause)
 
-        cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        #cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # Image.fromarray( obj , mode = None )
         # obj - Objeto com interface de matriz
         # mode - Modo a ser usado (será determinado a partir do tipo se None) Consulte:
@@ -428,7 +416,7 @@ class FUTOTAL:
         img1 = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         img_in = tf.expand_dims(img1, 0)
-        img_in = transform_images(img_in, self.FLAGS.size)
+        img_in = transform_images(img_in, FLAGS.size)
         # img_in = Image.fromarray(img_in);
 
         # original: shape=(1, 288, 288, 3)
@@ -447,8 +435,8 @@ class FUTOTAL:
                       zip(converted_boxes, scores[0], names, features)]
 
         # initialize color map
-        cmap = plt.get_cmap('tab20b')
-        colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
+        #cmap = plt.get_cmap('tab20b')
+        #colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
 
         # run non-maxima suppresion
         boxs = np.array([d.tlwh for d in detections])
@@ -462,18 +450,16 @@ class FUTOTAL:
         self.tracker.update(detections)
 
         cont_objects_positions_id = 0
-        cont_objects_positions_x = 0
-        cont_objects_positions_y = 0
         cont_objects_positions_x_min = 0
         cont_objects_positions_y_min = 0
+        cont_objects_positions_x_max = 0
+        cont_objects_positions_y_max = 0
 
         for track in self.tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             bbox = track.to_tlbr()
             class_name = track.get_class()
-            color = colors[int(track.track_id) % len(colors)]
-            color = [i * 255 for i in color]
 
             # Se o id do track estiver no array de ids dos jogadores selecionados o rectagulo irá ser desenhado com uma cor diferente
             if self.contain(int(track.track_id)):
@@ -481,7 +467,7 @@ class FUTOTAL:
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                 #              (int(bbox[0]) + (len(str(track.track_id))) * 5, int(bbox[1])),
                 #              (255, 0, 255), -1)
-                cv2.ellipse(frame, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (20, 4), 0, 0, 360,
+                cv2.ellipse(frame, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (25, 4), 0, 0, 360,
                             (255, 0, 255), 2, 15)
 
                 cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
@@ -490,7 +476,7 @@ class FUTOTAL:
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 0, 255) , 2)
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                 #              (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])),  (0, 0, 255), -1)
-                cv2.ellipse(frame, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (20, 4), 0, 0, 360,
+                cv2.ellipse(frame, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (25, 4), 0, 0, 360,
                             (100, 255, 100), 2, 15)
                 cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
                             (255, 255, 255), 1)
@@ -500,17 +486,17 @@ class FUTOTAL:
             # self.objects_positions_x.insert(cont_objects_positions_x,int(bbox[0]))
             #self.objects_positions_y.insert(cont_objects_positions_y,int(bbox[1]))
             self.objects_positions_id[cont_objects_positions_id]=track.track_id
-            self.objects_positions_x[cont_objects_positions_x] = int(bbox[0])
-            self.objects_positions_y[cont_objects_positions_y] = int(bbox[1])
-            self.objects_positions_x_min[cont_objects_positions_x_min] = int(bbox[2])
-            self.objects_positions_y_min[cont_objects_positions_y_min] = int(bbox[3])
+            self.objects_positions_x_min[cont_objects_positions_x_min] = int(bbox[0])
+            self.objects_positions_y_min[cont_objects_positions_y_min] = int(bbox[1])
+            self.objects_positions_x_max[cont_objects_positions_x_max] = int(bbox[2])
+            self.objects_positions_y_max[cont_objects_positions_y_max] = int(bbox[3])
 
             # Incrementar contadores dos arrays para que cada posicao dos arrays coecidir com um jogador
             cont_objects_positions_id = cont_objects_positions_id+1
-            cont_objects_positions_x = cont_objects_positions_x+1
-            cont_objects_positions_y = cont_objects_positions_y+1
             cont_objects_positions_x_min = cont_objects_positions_x_min+1
             cont_objects_positions_y_min = cont_objects_positions_y_min+1
+            cont_objects_positions_x_max = cont_objects_positions_x_max+1
+            cont_objects_positions_y_max = cont_objects_positions_y_max+1
 
         # Criacao das multiplas linhas
         def arrayLenght(array):
@@ -537,21 +523,21 @@ class FUTOTAL:
                     cont = cont + 1
 
                 if self.line_player1[cont_line_player1_id] == self.line_player2[cont_line_player2_id]:
-                    x_new_player1 = self.objects_positions_x[player1] + ((self.objects_positions_x_min[player1] - self.objects_positions_x[player1])/2)
-                    x_new_player2 = self.objects_positions_x[player2] + (
-                                (self.objects_positions_x_min[player2] - self.objects_positions_x[player2]) / 2)
+                    x_new_player1 = self.objects_positions_x_min[player1] + ((self.objects_positions_x_max[player1] - self.objects_positions_x_min[player1]) / 2)
+                    x_new_player2 = self.objects_positions_x_min[player2] + (
+                            (self.objects_positions_x_max[player2] - self.objects_positions_x_min[player2]) / 2)
 
 
-                    cv2.line(frame, (int(x_new_player1), self.objects_positions_y_min[player1]),
-                            (int(x_new_player2), self.objects_positions_y_min[player2]), (0, 125, 255), 5)
+                    cv2.line(frame, (int(x_new_player1), self.objects_positions_y_max[player1]),
+                             (int(x_new_player2), self.objects_positions_y_max[player2]), (0, 125, 255), 5)
                 else:
-                    x_new_player1 = self.objects_positions_x[player1] + (
-                                (self.objects_positions_x_min[player1] - self.objects_positions_x[player1]) / 2)
-                    x_new_player2 = self.objects_positions_x[player2] + (
-                            (self.objects_positions_x_min[player2] - self.objects_positions_x[player2]) / 2)
+                    x_new_player1 = self.objects_positions_x_min[player1] + (
+                            (self.objects_positions_x_max[player1] - self.objects_positions_x_min[player1]) / 2)
+                    x_new_player2 = self.objects_positions_x_min[player2] + (
+                            (self.objects_positions_x_max[player2] - self.objects_positions_x_min[player2]) / 2)
 
-                    cv2.line(frame, (int(x_new_player1), self.objects_positions_y_min[player1]),
-                            (int(x_new_player2), self.objects_positions_y_min[player2]), (255, 255, 255), 5)
+                    cv2.line(frame, (int(x_new_player1), self.objects_positions_y_max[player1]),
+                             (int(x_new_player2), self.objects_positions_y_max[player2]), (255, 255, 255), 5)
                 cont_line_player1_id = cont_line_player1_id + 1
                 cont_line_player2_id = cont_line_player2_id + 1
 
@@ -713,8 +699,8 @@ class FUTOTAL:
         cont_objects_positions_y = 0
 
         while self.objects_positions_id[cont_objects_positions_id] > 0:
-            if ((x > self.objects_positions_x[cont_objects_positions_x]) and (x < self.objects_positions_x_min[cont_objects_positions_x])):
-                if ((y > self.objects_positions_y[cont_objects_positions_y]) and (y <self.objects_positions_y_min[cont_objects_positions_y])):
+            if ((x > self.objects_positions_x_min[cont_objects_positions_x]) and (x < self.objects_positions_x_max[cont_objects_positions_x])):
+                if ((y > self.objects_positions_y_min[cont_objects_positions_y]) and (y < self.objects_positions_y_max[cont_objects_positions_y])):
                     # if ((x - self.objects_positions_x[cont_objects_positions_x]) > 0) & (
                     #        (y - self.objects_positions_y[cont_objects_positions_y]) > 0):
                     if self.selectON == True:  # caso a opcao de selecionar esteija ativa o program ira proceder a selecao
@@ -939,6 +925,7 @@ class FUTOTAL:
             self.setaON = False
             self.start()
 
+
     def seta_passeONOFF(self):
         if self.seta_passeON == False:
             self.Seta_Passe.configure(bg="gray")
@@ -954,6 +941,7 @@ class FUTOTAL:
         else:
             self.seta_passeON = False
             self.start()
+
 
     def pollyONOFF(self):
         if self.pollyON == False:
@@ -1026,7 +1014,9 @@ class FUTOTAL:
             # NUMBER OF FRAMES
             property_id = int(cv2.CAP_PROP_FRAME_COUNT)
             self.length = int(cv2.VideoCapture.get(self.cap, property_id))
-            self.numframes=0
+            self.isLogo = False
+            self.numframes = 0
+            self.w2.config(from_=0)
             self.w2.config(to=self.length)
 
             self.clean_arrays()
@@ -1063,10 +1053,10 @@ class FUTOTAL:
         self.initArray(self.selecteds)
 
         self.initArray(self.objects_positions_id)
-        self.initArray(self.objects_positions_x)
-        self.initArray(self.objects_positions_y)
         self.initArray(self.objects_positions_x_min)
         self.initArray(self.objects_positions_y_min)
+        self.initArray(self.objects_positions_x_max)
+        self.initArray(self.objects_positions_y_max)
 
         self.initArray(self.frame_arrow_create)
         self.initArray(self.coordinates_arrow_x_init)
