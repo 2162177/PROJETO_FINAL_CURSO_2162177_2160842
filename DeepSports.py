@@ -364,7 +364,7 @@ class FUTOTAL:
         m3 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m3.pack(fill=tk.BOTH,side=tk.TOP, expand=1)
         tk.Label(m3, text='Vermelho:').pack(side=tk.LEFT)
-        self.vermelho =tk.Scale(m3, from_=0, to=255, rient=tk.HORIZONTAL)
+        self.vermelho =tk.Scale(m3, from_=0, to=255, orient=tk.HORIZONTAL)
         self.vermelho.pack(side=tk.RIGHT)
         m4 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m4.pack(fill=tk.BOTH,side=tk.TOP)
