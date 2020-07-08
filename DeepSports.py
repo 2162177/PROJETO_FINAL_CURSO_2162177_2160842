@@ -10,6 +10,7 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
+from tkinter.ttk import Combobox
 import cv2
 import tensorflow as tf
 from yolov3_tf2.models import (
@@ -171,8 +172,9 @@ class FUTOTAL:
 
         self.createMenuTop()
         self.createMenuLeft()
+        self.createMenuRight()
 
-        self.master.title("DeepSports - Sports Analysis Software")
+        self.master.title("DeepSports Eleven - Sports Analysis Software")
         self.master.bind('<Escape>', lambda e: self.master.quit())
         self.lmain = tk.Label(self.master, width=width_screen-300, height=height_screen-225)
         self.lmain.pack()
@@ -182,6 +184,7 @@ class FUTOTAL:
         self.length = int(cv2.VideoCapture.get(self.cap, property_id))
 
         self.createMenuBottom()
+
 
         self.show_frame()
 
@@ -207,9 +210,9 @@ class FUTOTAL:
         filemenu.add_command(label="Save", command=self.donothing)
         filemenu.add_command(label="Save as...", command=self.donothing)
         filemenu.add_command(label="Close", command=self.donothing)
-
         filemenu.add_command(label="Exit", command=self.master.quit)
         self.menuBar.add_cascade(label="File", menu=filemenu)
+
         editmenu = tk.Menu(self.menuBar, tearoff=0)
         editmenu.add_command(label="Scree shot", command=self.donothing)
 
@@ -276,13 +279,12 @@ class FUTOTAL:
         CreateToolTip(self.Line_Drop_All, text='Click on this button and delete all the lines.')
 
         self.Polly = tk.Button(m2, text="Draw polly\nbetween players", image=self.line, command=self.pollyONOFF,
-                               compound="top")
+                                       compound="top")
         self.Polly.pack(fill=tk.BOTH, side=tk.TOP)
         CreateToolTip(self.Polly, text='Click on the players that will be part of the polygon.')
 
-        self.Polly_Drop = tk.Button(m2, text="Remove polly\nbetween players", image=self.line,
-                                    command=self.polly_dropONOFF,
-                                    compound="top")
+        self.Polly_Drop = tk.Button(m2, text="Remove polly\nbetween players", image=self.line, command=self.polly_dropONOFF,
+                               compound="top")
         self.Polly_Drop.pack(fill=tk.BOTH, side=tk.TOP)
         CreateToolTip(self.Polly_Drop, text='Click on the polygon player you want to remove.')
 
@@ -333,6 +335,70 @@ class FUTOTAL:
             m2.after(1000, colorsButtons)
         colorsButtons()
 
+    def createMenuRight(self):
+        m1 = tk.PanedWindow()
+        m1.pack(fill=tk.BOTH, expand=0, side=tk.RIGHT)
+
+        # cap.set(cv2.CAP_PROP_FRAME_WIDTH,width)
+        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT,height)
+
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m1.add(m2)
+        var = tk.StringVar()
+        var.set("Select player")
+        data = ("Select player", "Lines between players", "Polly between players", "Rectangle", "Elipse")
+        cb = Combobox(m2, values=data)
+        cb.current(0)
+        cb.pack(fill=tk.BOTH, side=tk.TOP)
+
+
+        self.canvas = tk.Canvas(m2, width=200, height=200)
+        self.canvas.pack(fill=tk.BOTH, side=tk.TOP)
+        m6 = tk.PanedWindow(m2, orient=tk.VERTICAL)
+        m2.add(m6)
+        m6.pack(fill=tk.BOTH,side=tk.TOP)
+        self.frame1 = tk.Frame(m6)
+        self.frame1.pack(fill=tk.BOTH,side=tk.LEFT)
+
+        self.canvas.create_oval(15, 15, 185, 185, fill='white', tag='bola')
+        m3 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
+        m3.pack(fill=tk.BOTH,side=tk.TOP, expand=1)
+        tk.Label(m3, text='Vermelho:').pack(side=tk.LEFT)
+        self.vermelho =tk.Scale(m3, from_=0, to=255, rient=tk.HORIZONTAL)
+        self.vermelho.pack(side=tk.RIGHT)
+        m4 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
+        m4.pack(fill=tk.BOTH,side=tk.TOP)
+        tk.Label(m4, text='Verde:').pack(side=tk.LEFT)
+        self.verde = tk.Entry(m4, width=4)
+        self.verde.pack(side=tk.RIGHT)
+        m5= tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
+        m5.pack(fill=tk.BOTH,side=tk.TOP)
+        tk.Label(m5, text='Azul:').pack(side=tk.LEFT)
+        self.azul = tk.Entry(m5, width=4)
+        self.azul.pack(side=tk.RIGHT)
+        m7 = tk.PanedWindow(m6, orient=tk.VERTICAL)
+        m7.pack(fill=tk.BOTH, side=tk.BOTTOM)
+        tk.Button(m7, text='Mostra', command=self.misturar).pack(side=tk.RIGHT)
+        # self.rgb=tk.Label(self.frame,text='',width=8,font=('Verbana','10','bold'))
+        # self.rgb.pack()
+
+        self.listbox = tk.Listbox(m2)
+        self.listbox.pack(fill=tk.BOTH, side=tk.TOP)
+
+        #self.listbox.insert(tk.END, "a list entry")
+
+        for item in ["1 - Player", "2 - Player", "3 - Player", "4 - Player", "5 - Ball"]:
+            self.listbox.insert(tk.END, item)
+
+    def misturar(self):
+        cor = "#%02x%02x%02x" % (int(self.vermelho.get()),
+                                 int(self.verde.get()),
+                                 int(self.azul.get()))
+        self.canvas.delete('bola')
+        self.canvas.create_oval(15, 15, 185, 185, fill=cor, tag='bola')
+        # self.rgb['text'] = cor
+        self.vermelho.focus_force()
+
     def createMenuBottom(self):
         m1 = tk.PanedWindow(orient=tk.VERTICAL)
         m1.pack(fill=tk.BOTH, expand=0,side=tk.BOTTOM)
@@ -341,7 +407,7 @@ class FUTOTAL:
         m1.add(m0)
 
 
-        self.w2 = tk.Scale(m0, from_=1, to=1, variable=self.selectFrame, orient=tk.HORIZONTAL, showvalue= 0, command=self.selectFrameScale)
+        self.w2 = tk.Scale(m0, from_=0, to=self.length, variable=self.selectFrame, orient=tk.HORIZONTAL, command=self.selectFrameScale)
         self.w2.pack(fill=tk.BOTH, side=tk.LEFT,expand=1)
 
         m2 = tk.PanedWindow(m1, orient=tk.HORIZONTAL)
@@ -357,8 +423,7 @@ class FUTOTAL:
 
         def scaleFrames():
             self.w2.set(self.numframes)
-            m2.after(1000, scaleFrames)
-
+            m2.after(1000,scaleFrames)
         scaleFrames()
 
         def labelFrames():
@@ -368,8 +433,8 @@ class FUTOTAL:
                 var.set("")
             labelframes.config(text=var)
             m2.after(100, labelFrames)
-
         labelFrames()
+
         m3 = tk.PanedWindow(m2, orient=tk.HORIZONTAL)
         m2.add(m3)
         m3.place(relx=0.5, rely=0.5, anchor=tk.CENTER, relheight=1.0)
@@ -665,9 +730,9 @@ class FUTOTAL:
         coordenates = (0,0)
         array = []
         for o in self.objects_positions_id:
-            x_player = self.objects_positions_x[cont] + (
-                        (self.objects_positions_x_min[cont] - self.objects_positions_x[cont]) / 2)
-            x_player_1 = self.objects_positions_y_min[cont]
+            x_player = self.objects_positions_x_min[cont] + (
+                    (self.objects_positions_x_max[cont] - self.objects_positions_x_min[cont]) / 2)
+            x_player_1 = self.objects_positions_y_max[cont]
             if o == number:
                 array.insert(0,int(x_player))
                 array.insert(1,int(x_player_1))
@@ -925,7 +990,6 @@ class FUTOTAL:
             self.setaON = False
             self.start()
 
-
     def seta_passeONOFF(self):
         if self.seta_passeON == False:
             self.Seta_Passe.configure(bg="gray")
@@ -941,7 +1005,6 @@ class FUTOTAL:
         else:
             self.seta_passeON = False
             self.start()
-
 
     def pollyONOFF(self):
         if self.pollyON == False:
@@ -1014,10 +1077,9 @@ class FUTOTAL:
             # NUMBER OF FRAMES
             property_id = int(cv2.CAP_PROP_FRAME_COUNT)
             self.length = int(cv2.VideoCapture.get(self.cap, property_id))
+            self.w2.config(to=self.length)
             self.isLogo = False
             self.numframes = 0
-            self.w2.config(from_=0)
-            self.w2.config(to=self.length)
 
             self.clean_arrays()
 
@@ -1079,7 +1141,7 @@ class FUTOTAL:
 def main(_argv):
 
     root = tk.Tk()
-    root.title("DeepSports - Sports Analysis Software")
+    root.title("DeepSports Eleven - Sports Analysis Software")
     #var=str(width_screen-200) +"x"+ str(height_screen)
     #root.geometry(var)
     app = FUTOTAL(root,_argv)
