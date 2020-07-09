@@ -5,7 +5,7 @@ import ctypes
 import datetime
 import matplotlib.pyplot as plt
 import imutils as imutils
-from PIL import Image,ImageTk
+from PIL import Image,ImageTk, ImageDraw
 from absl import app, flags, logging
 from absl.flags import FLAGS
 import tkinter as tk
@@ -132,6 +132,7 @@ class FUTOTAL:
         self.initArray(self.coordinates_rectangle_y_final)
         self.num_of_click_rectangle = 0
 
+
         # Variaveis para o seta
         self.seta_passeON = False
         self.setaON = False
@@ -155,6 +156,17 @@ class FUTOTAL:
         self.array_lists_polly_players_ONOFF = []
         self.count_pollys = -1
         self.polly_dropON = False
+
+        # Variaveis para a caixa de texto
+        self.textBoxON = False
+        self.frame_textBox_create = arr.array('i', [])
+        self.coordinates_textBox_x_init = arr.array('i', [])
+        self.coordinates_textBox_y_init = arr.array('i', [])
+        self.coordinates_textBox_text = []
+        self.initArray(self.frame_textBox_create)
+        self.initArray(self.coordinates_textBox_x_init)
+        self.initArray(self.coordinates_textBox_y_init)
+        self.initArray(self.coordinates_textBox_text)
 
         # Definition of the parameters
         self.max_cosine_distance = 0.5
@@ -219,6 +231,8 @@ class FUTOTAL:
             for x in range(100):
                 array[x] = 0
 
+
+
     def createMenuTop(self):
         self.menuBar = tk.Menu(self.master)
 
@@ -232,7 +246,7 @@ class FUTOTAL:
         self.menuBar.add_cascade(label="File", menu=filemenu)
 
         editmenu = tk.Menu(self.menuBar, tearoff=0)
-        editmenu.add_command(label="Scree shot", command=self.donothing)
+        editmenu.add_command(label="Screen shot", command=self.donothing)
 
         editmenu.add_separator()
 
@@ -274,6 +288,7 @@ class FUTOTAL:
         self.seta = tk.PhotoImage(file=r'./data/seta.png')
         self.seta_yellow = tk.PhotoImage(file=r'./data/seta_passe.png')
         self.icon = tk.PhotoImage(file=r'./data/icon.png')
+        self.textBox = tk.PhotoImage(file=r'./data/textBox.png')
 
         # here, image option is used to
         # set image on button
@@ -325,6 +340,11 @@ class FUTOTAL:
         CreateToolTip(self.Icon, text='Click on the player you want to select.\n'
                                       'Click again to deselect')
 
+        self.TextBox = tk.Button(m2, text="Draw textbox", image=self.textBox, command=self.textBoxONOFF, compound="top")
+        self.TextBox.pack(fill=tk.BOTH, side=tk.TOP)
+        CreateToolTip(self.TextBox, text='Click on the exact spot where the textbox starts.\n'
+                                      'And then click on the exact spot where the textbox ends')
+
         # variavel que serve para guardar a cor original do butao
         self.orig_color = self.Icon.cget("background")
 
@@ -349,6 +369,9 @@ class FUTOTAL:
                 self.Polly.configure(bg=self.orig_color)
             if self.polly_dropON ==  False:
                 self.Polly_Drop.configure(bg=self.orig_color)
+            if self.textBoxON == False:
+                self.TextBox.configure(bg=self.orig_color)
+
 
             m2.after(1000, colorsButtons)
         colorsButtons()
@@ -657,6 +680,7 @@ class FUTOTAL:
         if self.pause == False:
             self.numframes=self.numframes+1
         print(self.numframes)
+
         frame = imutils.resize(frame, width=width_screen-300)
 
         print(self.pause)
@@ -737,8 +761,11 @@ class FUTOTAL:
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 0, 255) , 2)
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                 #              (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])),  (0, 0, 255), -1)
-                cv2.ellipse(frame, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (25, 4), 0, 0, 360,
-                            (100, 255, 100), 2, 15)
+                overlay_detect = frame.copy()
+                alpha_detect = 0.3
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 4), 0, 0, 360,
+                            (100, 255, 100), -1, 15)
+                frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
 
             
             if self.pause == False:
@@ -780,6 +807,7 @@ class FUTOTAL:
 
             for item in self.list:
                 self.listbox.insert(tk.END, item)
+
 
             # cada jogador selecionado irá ter o id registado no array de ids, a posicao do x no array dos x e a posicao do y no array do y
             # self.objects_positions_id.insert(cont_objects_positions_id,track.track_id)
@@ -935,6 +963,34 @@ class FUTOTAL:
 
         # out.write(img)
         # cv2.imshow('output', img)
+
+        if self.frame_textBox_create[0] != 0:
+            contador_textBox = 0
+            while contador_textBox < arrayLenght(self.frame_textBox_create):
+                start_point = (int(self.coordinates_textBox_x_init[contador_textBox]),
+                               int(self.coordinates_textBox_y_init[contador_textBox]))
+
+                color = (0, 0, 0)
+                #textInput = "Passe errado do Sergio Ramos"
+                #textInput = input("Text to add.\n")
+
+
+                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 25:
+                    overlay_textBox = frame.copy()
+                    alpha_textBox = 0.3
+                    try:
+                        cv2.rectangle(overlay_textBox, (int(self.coordinates_textBox_x_init[contador_textBox]-5), int(self.coordinates_textBox_y_init[contador_textBox] - 30)),
+                                      (int(self.coordinates_textBox_x_init[contador_textBox]) + ((len(self.coordinates_textBox_text[contador_textBox])) * 13) + 5, int(self.coordinates_textBox_y_init[contador_textBox]+20)),
+                                      (255, 255, 255), -1)
+                        frame = cv2.addWeighted(overlay_textBox, alpha_textBox, frame, 1 - alpha_textBox, 0)
+                        cv2.putText(frame, self.coordinates_textBox_text[contador_textBox], start_point, cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                    except:
+                        print("Waiting for text box")
+
+
+
+                contador_textBox = contador_textBox + 1
+
 
         # Zoom aplicado, o self.zoom irá decidir a escala aplicada no video
         scale_percent = self.zoom  # percent of original size
@@ -1133,8 +1189,33 @@ class FUTOTAL:
                 self.coordinates_rectangle_y_final[num] = y
                 self.num_of_click_rectangle = 0
 
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+        if self.textBoxON == True:
+            self.num = int(arrayLenght(self.frame_textBox_create))
+            self.frame_textBox_create[self.num] = self.numframes
+            self.coordinates_textBox_x_init[self.num] = x
+            self.coordinates_textBox_y_init[self.num] = y
+
+
+            self.masterTextBox = tk.Tk()
+            #self.masterTextBox.tk.call('wm', 'iconphoto', self.masterTextBox._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+
+            tk.Label(self.masterTextBox, text="Text to add:").grid(row=0)
+            self.e1 = tk.Entry(self.masterTextBox)
+            self.e1.grid(row=1)
+            tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=4)
+
+
+            #self.masterTextBox.mainloop()
+
+          self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
         self.show_frame()
+        
+
+
+    def saveTextBox(self):
+        self.coordinates_textBox_text[self.num] = self.e1.get()
+        self.masterTextBox.destroy()
+        self.start()
 
     def selectONOFF(self): # funcao que irá ativar a opcao selecionar
         if self.selectON==False:
@@ -1148,6 +1229,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.selectON=False
             self.start()
@@ -1164,6 +1246,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.LineON = False
             self.start()
@@ -1180,6 +1263,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.line_dropON = False
             self.start()
@@ -1196,6 +1280,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.LineON = False
             self.start()
@@ -1212,6 +1297,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.quadradoON = False
             self.start()
@@ -1228,6 +1314,7 @@ class FUTOTAL:
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.setaON = False
             self.start()
@@ -1244,6 +1331,7 @@ class FUTOTAL:
             self.setaON = False
             self.pollyON = False
             self.polly_dropON = False
+            self.textBoxON = False
         else:
             self.seta_passeON = False
             self.start()
@@ -1263,6 +1351,8 @@ class FUTOTAL:
             self.setaON = False
             self.seta_passeON = False
             self.polly_dropON = False
+            self.textBoxON = False
+
         else:
             self.pollyON = False
             self.start()
@@ -1280,8 +1370,26 @@ class FUTOTAL:
             self.line_dropON = False
             self.setaON = False
             self.seta_passeON = False
+            self.textBoxON = False
         else:
             self.polly_dropON = False
+            self.start()
+
+    def textBoxONOFF(self):
+        if self.textBoxON == False:
+            self.textBoxON = True
+            self.TextBox.configure(bg="gray")
+            self.selectON = False
+            self.circuloON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.setaON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
+        else:
+            self.textBoxON = False
             self.start()
 
     def zoomin(self):
@@ -1371,6 +1479,11 @@ class FUTOTAL:
         self.initArray(self.coordinates_arrow_y_final)
         self.initArray(self.arrow_type)
 
+        self.initArray(self.frame_textBox_create)
+        self.initArray(self.coordinates_textBox_x_init)
+        self.initArray(self.coordinates_textBox_y_init)
+        self.initArray(self.coordinates_textBox_text)
+
     def back(self):
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes-100)
         if (self.numframes-100)>0:
@@ -1386,9 +1499,11 @@ def main(_argv):
 
     root = tk.Tk()
     root.title("DeepSports Eleven - Sports Analysis Software")
+    #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
     #var=str(width_screen-200) +"x"+ str(height_screen)
     #root.geometry(var)
     app = FUTOTAL(root,_argv)
+    #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
     #show_frame(FLAGS, yolo, class_names, cap, root, lmain, out)
     root.mainloop()
 
