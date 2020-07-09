@@ -1205,9 +1205,7 @@ class FUTOTAL:
             tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=4)
 
 
-            #self.masterTextBox.mainloop()
-
-          self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
         self.show_frame()
         
 
