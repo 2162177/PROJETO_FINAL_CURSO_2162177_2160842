@@ -37,7 +37,7 @@ flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_string('video', './data/flamengo.mp4',
                     'path to video file or number for webcam)')
-flags.DEFINE_string('logo', './data/imageminicial.jpeg',
+flags.DEFINE_string('logo', './data/initialLogo.jpg',
                     'path to initial logo file')
 flags.DEFINE_string('output', 'output.avi', 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
@@ -74,11 +74,12 @@ class FUTOTAL:
         self.numframes = numframes
         self.frame_paused = 0
         self.isLogo = True
+        self.times = []
 
         # Variaveis das cores
         self.color_line = (255, 125, 255)
         self.color_rectangle = (0, 255, 255)
-        self.color_elipse = 0
+        self.color_elipse = (0,150,250)
         self.color_passed = (0, 255, 255)
         self.color_movement = (255,0,0)
         self.color_polly = (0, 255, 0)
@@ -115,8 +116,19 @@ class FUTOTAL:
         self.line_dropON = False
 
 
-        # Variaveis para o circulo
-        self.circuloON = False
+        # Variaveis para a elipse
+        self.elipseON = False
+        self.frame_elipse_create = arr.array('i', [])
+        self.coordinates_elipse_x_init = arr.array('i', [])
+        self.coordinates_elipse_y_init = arr.array('i', [])
+        self.coordinates_elipse_x_final = arr.array('i', [])
+        self.coordinates_elipse_y_final = arr.array('i', [])
+        self.initArray(self.frame_elipse_create)
+        self.initArray(self.coordinates_elipse_x_init)
+        self.initArray(self.coordinates_elipse_y_init)
+        self.initArray(self.coordinates_elipse_x_final)
+        self.initArray(self.coordinates_elipse_y_final)
+        self.num_of_click_elipse = 0
 
         # Variaveis para o quadrado
         self.quadradoON = False
@@ -206,8 +218,9 @@ class FUTOTAL:
 
         self.master.title("DeepSports Eleven - Sports Analysis Software")
         self.master.bind('<Escape>', lambda e: self.master.quit())
-        self.lmain = tk.Label(self.master, width=width_screen-300, height=height_screen-225)
+        self.lmain = tk.Label(self.master, width=width_screen-400, height=height_screen-200)
         self.lmain.pack()
+
 
         #NUMBER OF FRAMES
         property_id = int(cv2.CAP_PROP_FRAME_COUNT)
@@ -217,6 +230,7 @@ class FUTOTAL:
 
 
         self.show_frame()
+        self.master.tk.call('wm', 'iconphoto', self.master._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
 
     def donothing(self):
         filewin = tk.Toplevel(self.master)
@@ -281,7 +295,7 @@ class FUTOTAL:
 
 
         # Creating a photoimage object to use image
-        self.circle = tk.PhotoImage(file=r'./data/circle.png')
+        self.elipse = tk.PhotoImage(file=r'./data/elipse.png')
         self.line = tk.PhotoImage(file=r'./data/line.png')
         self.line_drop = tk.PhotoImage(file=r'./data/line_drop.png')
         self.quadrado = tk.PhotoImage(file=r'./data/quadrado.png')
@@ -292,9 +306,10 @@ class FUTOTAL:
 
         # here, image option is used to
         # set image on button
-        self.Circle = tk.Button(m2,text="Draw Circle", image=self.circle,command=self.circuloONOFF,compound="top")
-        self.Circle.pack(fill=tk.BOTH, side=tk.TOP)
-
+        self.Elipse = tk.Button(m2, text="Draw Ellipse", image=self.elipse, command=self.elipseONOFF, compound="top")
+        self.Elipse.pack(fill=tk.BOTH, side=tk.TOP)
+        CreateToolTip(self.Elipse, text='Click on the exact place where the ellipse starts.\n'
+                                          'And then click on the point where it ends.')
         # here, image option is used to
         # set image on button
         self.Line = tk.Button(m2,text="Draw Line", image=self.line, command=self.lineONOFF,compound="top")
@@ -355,8 +370,8 @@ class FUTOTAL:
                 self.Icon.configure(bg=self.orig_color)
             if self.LineON == False:
                 self.Line.configure(bg=self.orig_color)
-            if self.circuloON == False:
-                self.Circle.configure(bg=self.orig_color)
+            if self.elipseON == False:
+                self.Elipse.configure(bg=self.orig_color)
             if self.quadradoON == False:
                 self.Quadrado.configure(bg=self.orig_color)
             if self.setaON == False:
@@ -582,7 +597,7 @@ class FUTOTAL:
         # self.rgb['text'] = cor
         self.vermelho.focus_force()
 
-        if self.cb.get() == "Lines between players" :
+        if self.cb.get() == "Lines between players":
             self.color_line = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
@@ -590,7 +605,7 @@ class FUTOTAL:
             self.color_movement = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
-        if self.cb.get() == "Arrow of Passed":
+        if self.cb.get() == "Arrow of Passes":
             self.color_passed = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
@@ -606,7 +621,7 @@ class FUTOTAL:
             self.color_rectangle = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
-        if self.cb.get() == "Elipse":
+        if self.cb.get() == "Ellipse":
             self.color_elipse = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
@@ -674,6 +689,7 @@ class FUTOTAL:
         self.start()
 
     def show_frame(self):
+        t1 = time.time()
         global running
         _, frame = self.cap.read()
         # frame = cv2.flip(frame, 0)
@@ -681,7 +697,7 @@ class FUTOTAL:
             self.numframes=self.numframes+1
         print(self.numframes)
 
-        frame = imutils.resize(frame, width=width_screen-300)
+        frame = imutils.resize(frame, width=width_screen-400)
 
         print(self.pause)
 
@@ -762,12 +778,20 @@ class FUTOTAL:
                 #cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                 #              (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])),  (0, 0, 255), -1)
                 overlay_detect = frame.copy()
-                alpha_detect = 0.3
-                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 4), 0, 0, 360,
-                            (100, 255, 100), -1, 15)
+                alpha_detect = 0.4
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0, 360,
+                            (100,255,100), -1, 15)
+
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                            360,
+                            (0,80,0), 2, 15)
+
                 frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
 
-            
+
+
+
+
             if self.pause == False:
                 if self.array_lists_id_with_names.count(track.track_id) > 0:
                     count = 0
@@ -893,6 +917,49 @@ class FUTOTAL:
 
                 contador_setas = contador_setas + 1
 
+        # criacao de elipses
+        if self.frame_elipse_create[0] != 0:
+            contador_elipse = 0
+            while contador_elipse < arrayLenght(self.frame_elipse_create):
+                start_point = (int(self.coordinates_elipse_x_init[contador_elipse]),
+                               int(self.coordinates_elipse_y_init[contador_elipse]))
+
+                end_point = (int(self.coordinates_elipse_x_final[contador_elipse]),
+                             int(self.coordinates_elipse_y_final[contador_elipse]))
+
+
+                if int(self.coordinates_elipse_x_final[contador_elipse]) == 0 and int(
+                        self.coordinates_elipse_y_final[contador_elipse]) == 0:
+                    end_point = (int(self.coordinates_elipse_x_init[contador_elipse]),
+                                 int(self.coordinates_elipse_y_init[contador_elipse]))
+
+                color = self.color_elipse
+
+                if start_point[0] < end_point[0]:
+                    center_x = int(start_point[0] + ((end_point[0] - start_point[0]) / 2))
+                    elipse_height = int(((end_point[0] - start_point[0]) / 2) + 1)
+                else:
+                    center_x = int(end_point[0] + ((start_point[0] - end_point[0]) / 2))
+                    elipse_height = int(((start_point[0] - end_point[0]) / 2) + 1)
+
+                if start_point[1] < end_point[1]:
+                    center_y=int(start_point[1] + ((end_point[1]-start_point[1])/2))
+                    elipse_widht=int(((end_point[1]-start_point[1])/2)+1)
+                else:
+                    center_y = int(end_point[1] + ((start_point[1] - end_point[1]) / 2))
+                    elipse_widht = int(((start_point[1] - end_point[1]) / 2) + 1)
+
+                if int(self.numframes) - int(self.frame_elipse_create[contador_elipse]) < 25:
+                    overlay_elipse = frame.copy()
+                    alpha_elipse = 0.5
+                    cv2.ellipse(overlay_elipse, (center_x, center_y),
+                                (elipse_height, elipse_widht), 0, 0, 360, color, -1)
+
+                    frame = cv2.addWeighted(overlay_elipse, alpha_elipse, frame, 1 - alpha_elipse, 0)
+
+                contador_elipse = contador_elipse + 1
+
+
         #criacao de quadrados/ retangulos
         if self.frame_rectangle_create[0] != 0:
             contador_rectangulos = 0
@@ -910,10 +977,11 @@ class FUTOTAL:
 
                 color = self.color_rectangle
 
-                thickness = 2
-
                 if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < 25:
-                    cv2.rectangle(frame, start_point, end_point,color, thickness)
+                    overlay_rectangle = frame.copy()
+                    alpha_rectangle = 0.2
+                    cv2.rectangle(overlay_rectangle, start_point, end_point, color, -1)
+                    frame = cv2.addWeighted(overlay_rectangle, alpha_rectangle, frame, 1 - alpha_rectangle, 0)
 
                 contador_rectangulos = contador_rectangulos + 1
 
@@ -954,7 +1022,11 @@ class FUTOTAL:
                         # Draw polygon
                         nppts = np.stack((arr1, arr2), axis=1)
                         nppts = nppts.astype(int)
-                        cv2.fillConvexPoly(frame, nppts, self.color_polly)
+                        overlay_poly = frame.copy()
+                        alpha_poly = 0.2
+
+                        cv2.fillConvexPoly(overlay_poly, nppts, self.color_polly)
+                        frame = cv2.addWeighted(overlay_poly, alpha_poly, frame, 1 - alpha_poly, 0)
 
 
                     contador_polly = contador_polly + 1
@@ -1008,7 +1080,12 @@ class FUTOTAL:
         self.lmain.imgtk = imgtk
         self.lmain.configure(image=imgtk)
 
-        key = cv2.waitKey(1)
+        t2 = time.time()
+        self.times.append(t2 - t1)
+        self.times = self.times[-20:]
+        print("fps: {:.2f}".format(round(1/((sum(self.times)/len(self.times))), 2)))
+
+        #key = cv2.waitKey(1)
 
         self.lmain.bind('<Leave>', self.exit_)
         self.lmain.bind('<Button-1>', self.motion) # quando alguem clica na tela de jogo o irá imediatamente assionar a funcao self.motion
@@ -1189,6 +1266,20 @@ class FUTOTAL:
                 self.coordinates_rectangle_y_final[num] = y
                 self.num_of_click_rectangle = 0
 
+        if self.elipseON == True:
+            if self.num_of_click_elipse == 0:
+                num = int(arrayLenght(self.frame_elipse_create))
+                self.frame_elipse_create[num] = self.numframes
+                self.coordinates_elipse_x_init[num] = x
+                self.coordinates_elipse_y_init[num] = y
+                self.num_of_click_elipse= self.num_of_click_elipse + 1
+
+            else:
+                num = int(arrayLenght(self.coordinates_elipse_x_final))
+                self.coordinates_elipse_x_final[num] = x
+                self.coordinates_elipse_y_final[num] = y
+                self.num_of_click_elipse = 0
+
         if self.textBoxON == True:
             self.num = int(arrayLenght(self.frame_textBox_create))
             self.frame_textBox_create[self.num] = self.numframes
@@ -1197,12 +1288,10 @@ class FUTOTAL:
 
 
             self.masterTextBox = tk.Tk()
-            #self.masterTextBox.tk.call('wm', 'iconphoto', self.masterTextBox._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
-
             tk.Label(self.masterTextBox, text="Text to add:").grid(row=0)
             self.e1 = tk.Entry(self.masterTextBox)
             self.e1.grid(row=1)
-            tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=4)
+            tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=5)
 
 
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
@@ -1221,7 +1310,7 @@ class FUTOTAL:
             self.Icon.configure(bg="gray")
             self.LineON = False
             self.quadradoON = False
-            self.circuloON = False
+            self.elipseON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
@@ -1238,7 +1327,7 @@ class FUTOTAL:
             self.Line.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
-            self.circuloON = False
+            self.elipseON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
@@ -1255,7 +1344,7 @@ class FUTOTAL:
             self.Line_Drop.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
-            self.circuloON = False
+            self.elipseON = False
             self.setaON = False
             self.LineON = False
             self.seta_passeON = False
@@ -1266,10 +1355,10 @@ class FUTOTAL:
             self.line_dropON = False
             self.start()
 
-    def circuloONOFF(self):
-        if self.circuloON == False:
-            self.circuloON = True
-            self.Circle.configure(bg="gray")
+    def elipseONOFF(self):
+        if self.elipseON == False:
+            self.elipseON = True
+            self.Elipse.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
             self.LineON = False
@@ -1288,7 +1377,7 @@ class FUTOTAL:
             self.quadradoON = True
             self.Quadrado.configure(bg="gray")
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.setaON = False
             self.line_dropON = False
@@ -1305,7 +1394,7 @@ class FUTOTAL:
             self.Seta.configure(bg="gray")
             self.setaON = True
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.quadradoON = False
             self.line_dropON = False
@@ -1322,7 +1411,7 @@ class FUTOTAL:
             self.Seta_Passe.configure(bg="gray")
             self.seta_passeON = True
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.quadradoON = False
             self.line_dropON = False
@@ -1342,7 +1431,7 @@ class FUTOTAL:
             self.array_lists_polly_players.append([])
             self.array_lists_polly_players_ONOFF.append(1)
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.quadradoON = False
             self.line_dropON = False
@@ -1362,7 +1451,7 @@ class FUTOTAL:
             self.polly_dropON = True
             self.pollyON = False
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.quadradoON = False
             self.line_dropON = False
@@ -1378,7 +1467,7 @@ class FUTOTAL:
             self.textBoxON = True
             self.TextBox.configure(bg="gray")
             self.selectON = False
-            self.circuloON = False
+            self.elipseON = False
             self.LineON = False
             self.quadradoON = False
             self.setaON = False
@@ -1477,6 +1566,18 @@ class FUTOTAL:
         self.initArray(self.coordinates_arrow_y_final)
         self.initArray(self.arrow_type)
 
+        self.initArray(self.frame_elipse_create)
+        self.initArray(self.coordinates_elipse_x_init)
+        self.initArray(self.coordinates_elipse_y_init)
+        self.initArray(self.coordinates_elipse_x_final)
+        self.initArray(self.coordinates_elipse_y_final)
+
+        self.initArray(self.frame_rectangle_create)
+        self.initArray(self.coordinates_rectangle_x_init)
+        self.initArray(self.coordinates_rectangle_y_init)
+        self.initArray(self.coordinates_rectangle_x_final)
+        self.initArray(self.coordinates_rectangle_y_final)
+
         self.initArray(self.frame_textBox_create)
         self.initArray(self.coordinates_textBox_x_init)
         self.initArray(self.coordinates_textBox_y_init)
@@ -1496,7 +1597,7 @@ class FUTOTAL:
 def main(_argv):
 
     root = tk.Tk()
-    root.title("DeepSports Eleven - Sports Analysis Software")
+    #root.title("DeepSports Eleven - Sports Analysis Software")
     #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
     #var=str(width_screen-200) +"x"+ str(height_screen)
     #root.geometry(var)
