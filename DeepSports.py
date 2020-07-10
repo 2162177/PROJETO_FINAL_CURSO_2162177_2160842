@@ -35,8 +35,6 @@ flags.DEFINE_string('weights', './weights/yolov3-custom4.tf',
                     'path to weights file')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
-flags.DEFINE_string('video', './data/flamengo.mp4',
-                    'path to video file or number for webcam)')
 flags.DEFINE_string('logo', './data/initialLogo.jpg',
                     'path to initial logo file')
 flags.DEFINE_string('output', 'output.avi', 'path to output video')
