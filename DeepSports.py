@@ -75,8 +75,10 @@ class FUTOTAL:
         self.color_line = (255, 125, 255)
         self.color_rectangle = (0, 255, 255)
         self.color_elipse = (0,150,250)
+
         self.color_passed = (255, 0, 0)
         self.color_movement = (0, 80, 255)
+
         self.color_polly = (0, 255, 0)
         self.color_select = (255, 0, 255)
 
@@ -116,6 +118,7 @@ class FUTOTAL:
         # Variaveis para a elipse
         self.elipseON = False
         self.elipse_dropON = False
+
         self.frame_elipse_create = arr.array('i', [])
         self.coordinates_elipse_x_init = arr.array('i', [])
         self.coordinates_elipse_y_init = arr.array('i', [])
@@ -302,6 +305,7 @@ class FUTOTAL:
 
 
         # Creating a photoimage object to use image
+
         self.elipse = tk.PhotoImage(file=r'./data/ellipse911.png')
         self.line = tk.PhotoImage(file=r'./data/setLine911.png')
         self.polly = tk.PhotoImage(file=r'./data/setPolly911.png')
@@ -314,7 +318,7 @@ class FUTOTAL:
         self.quadrado_drop = tk.PhotoImage(file=r'./data/quadrado.png')
         self.elipse_drop = tk.PhotoImage(file=r'./data/elipse.png')
 
-
+        
 
         # here, image option is used to
         # set image on button
@@ -1080,6 +1084,7 @@ class FUTOTAL:
 
                 color = self.color_rectangle
 
+
                 thickness = -1
 
                 if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < 50:
@@ -1395,21 +1400,18 @@ class FUTOTAL:
 
                 self.num_of_click_rectangle = 0
 
+
         if self.quadrado_dropON == True:
             count = 0
             while count < len(self.frame_rectangle_create):
                 if self.coordinates_rectangle_x_init[count] < x < self.coordinates_rectangle_x_final[count] and \
                         self.coordinates_rectangle_y_init[count] < y < self.coordinates_rectangle_y_final[count]:
-                    #self.coordinates_rectangle_x_init[count] = 0
-                    #self.coordinates_rectangle_x_final[count] = 0
-                    #self.coordinates_rectangle_y_init[count] = 0
-                    #self.coordinates_rectangle_y_final[count] = 0
-                    #self.frame_rectangle_create[count] = 0
-                    del self.coordinates_rectangle_x_init[count]
-                    del self.coordinates_rectangle_x_final[count]
-                    del self.coordinates_rectangle_y_init[count]
-                    del self.coordinates_rectangle_y_final[count]
-                    del self.frame_rectangle_create[count]
+                    self.coordinates_rectangle_x_init[count] = 0
+                    self.coordinates_rectangle_x_final[count] = 0
+                    self.coordinates_rectangle_y_init[count] = 0
+                    self.coordinates_rectangle_y_final[count] = 0
+                    self.frame_rectangle_create[count] = 0
+
 
                 count = count + 1
 
@@ -1424,6 +1426,7 @@ class FUTOTAL:
 
             else:
                 num = int(arrayLenght(self.coordinates_elipse_x_final))
+
 
                 if x >= self.coordinates_elipse_x_init[num]:
                     self.coordinates_elipse_x_final[num] = x
@@ -1454,6 +1457,7 @@ class FUTOTAL:
                 count = count + 1
 
 
+
         if self.textBoxON == True:
             self.num = int(arrayLenght(self.frame_textBox_create))
             self.frame_textBox_create[self.num] = self.numframes
@@ -1467,6 +1471,7 @@ class FUTOTAL:
             self.e1.grid(row=1)
             tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=5)
 
+
         if self.textBox_dropON == True:
             count = 0
             while count < len(self.frame_textBox_create):
@@ -1476,6 +1481,7 @@ class FUTOTAL:
                     del self.coordinates_textBox_x_init[count]
                     del self.coordinates_textBox_y_init[count]
                     del self.frame_textBox_create[count]
+
 
                 count = count + 1
 
