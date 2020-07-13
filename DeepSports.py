@@ -72,6 +72,10 @@ class FUTOTAL:
         self.isLogo = True
         self.times = []
 
+        self.opacity_detetar_jogador = 40
+        self.tamanho_letra_texto_jogador = 0
+        self.color_texto_jogador = (255,255,255)
+
         # Variaveis zoom
         self.zoom = 100
         self.zona_de_zoom = ""
@@ -82,8 +86,8 @@ class FUTOTAL:
         self.color_line = (255, 125, 255)
         self.color_rectangle = (0, 255, 255)
         self.color_elipse = (0, 150, 250)
-        self.color_passed = (0, 255, 255)
-        self.color_movement = (255, 0, 0)
+        self.color_passed = (255, 0, 0)
+        self.color_movement = (0, 80, 255)
         self.color_polly = (0, 255, 0)
         self.color_select = (255, 0, 255)
 
@@ -93,6 +97,7 @@ class FUTOTAL:
 
         # Variaveis para selecionar jogador
         self.selectON = False
+        self.opacity_selecionar_jogador = 40
         self.selecteds = arr.array('i', [])
         self.initArray(self.selecteds)
         self.objects_positions_id = arr.array('i', [])
@@ -108,6 +113,7 @@ class FUTOTAL:
 
         # Variaveis para adicionar linhas
         self.LineON = False
+        self.opacity_linha_jogadores = 40
         self.line_player_1 = []
         self.line_player_2 = []
         self.line_active = []
@@ -125,6 +131,9 @@ class FUTOTAL:
 
         # Variaveis para a elipse
         self.elipseON = False
+        self.elipse_dropON = False
+        self.duration_elipse = 50
+        self.opacity_elipse = 50
         self.frame_elipse_create = arr.array('i', [])
         self.coordinates_elipse_x_init = arr.array('i', [])
         self.coordinates_elipse_y_init = arr.array('i', [])
@@ -139,6 +148,9 @@ class FUTOTAL:
 
         # Variaveis para o quadrado
         self.quadradoON = False
+        self.quadrado_dropON = False
+        self.duration_retangle = 50
+        self.opacity_retangle = 40
         self.frame_rectangle_create = arr.array('i', [])
         self.coordinates_rectangle_x_init = arr.array('i', [])
         self.coordinates_rectangle_y_init = arr.array('i', [])
@@ -152,8 +164,14 @@ class FUTOTAL:
         self.num_of_click_rectangle = 0
 
         # Variaveis para o seta
+        self.duration_seta_passe = 40
+        self.duration_seta_movimanto = 40
+        self.opacity_passe = 60
+        self.opacity_movimento = 40
         self.seta_passeON = False
         self.setaON = False
+        self.seta_passe_dropON = False
+        self.seta_dropON = False
         self.frame_arrow_create = arr.array('i', [])
         self.coordinates_arrow_x_init = arr.array('i', [])
         self.coordinates_arrow_y_init = arr.array('i', [])
@@ -170,6 +188,7 @@ class FUTOTAL:
 
         # Variaveis para area entre jogadores
         self.pollyON = False
+        self.opacity_area_jogadores = 20
         self.array_lists_polly_players = []
         self.array_lists_polly_players_ONOFF = []
         self.count_pollys = -1
@@ -177,6 +196,12 @@ class FUTOTAL:
 
         # Variaveis para a caixa de texto
         self.textBoxON = False
+        self.textBox_dropON = False
+        self.duration_caixa_texto = 40
+        self.opacity_caixa_texto = 40
+        self.tamanho_letra_caixa_texto = 0
+        self.color_caixa_texto = (0,0,0)
+        self.color_caixa = (255,255,255)
         self.frame_textBox_create = arr.array('i', [])
         self.coordinates_textBox_x_init = arr.array('i', [])
         self.coordinates_textBox_y_init = arr.array('i', [])
@@ -281,25 +306,25 @@ class FUTOTAL:
         self.menuBar.add_cascade(label="View", menu=viewmenu)
 
         helpmenu = tk.Menu(self.menuBar, tearoff=0)
-        helpmenu.add_command(label="Help Index", command=self.donothing)
+        helpmenu.add_command(label="Help Index", command=self.windowsHelp)
         helpmenu.add_command(label="About...", command=self.donothing)
         self.menuBar.add_cascade(label="Help", menu=helpmenu)
         self.master.config(menu=self.menuBar)
 
     def windowsSettings(self):
-        app = tk.Tk()
-        app.title("Settings")
-        app.geometry("500x460")
+        self.settings = tk.Tk()
+        self.settings.title("Settings")
+        self.settings.geometry("500x450")
         color = "#%02x%02x%02x" % (66, 162, 80)
 
-        #app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
-        app.iconbitmap(r'.\data\dp11.ico')
-        m1 = tk.PanedWindow(app, orient=tk.VERTICAL)
+        # app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        self.settings.iconbitmap(r'.\data\dp11.ico')
+        m1 = tk.PanedWindow(self.settings, orient=tk.VERTICAL)
         m1.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL,height=30)
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
         m1.add(m2)
         m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m2, text='Duration in frames:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m2, text='Duration in frames:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
         m3 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m1.add(m3)
         m3.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -312,23 +337,28 @@ class FUTOTAL:
         m4.add(m6)
         m6.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m6, text='Arrow of Pass:').pack(side=tk.LEFT)
-        var = tk.DoubleVar(value=2)
-        w1 = tk.Spinbox(m6, from_=0, to=1000,width=5, textvariable=var)
-        w1.pack(side=tk.RIGHT)
+        self.defenition_duration_passe = tk.Spinbox(m6, from_=0, to=1000, width=5, textvariable=self.duration_seta_passe)
+        self.defenition_duration_passe.delete(0, tk.END)
+        self.defenition_duration_passe.insert(0, str(self.duration_seta_passe))
+        self.defenition_duration_passe.pack(side=tk.RIGHT)
 
         m8 = tk.PanedWindow(m4, orient=tk.VERTICAL)
         m4.add(m8)
         m8.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m8, text='Arrow of Movement:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m8, from_=0, to=1000, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_duration_movimento = tk.Spinbox(m8, from_=0, to=1000, width=5)
+        self.defenition_duration_movimento.delete(0,tk.END)
+        self.defenition_duration_movimento.insert(0,str(self.duration_seta_movimanto))
+        self.defenition_duration_movimento.pack(side=tk.RIGHT)
 
         m9 = tk.PanedWindow(m4, orient=tk.VERTICAL)
         m4.add(m9)
         m9.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m9, text='Text Box:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m9, from_=0, to=1000, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_duration_caixa_texto = tk.Spinbox(m9, from_=0, to=1000, width=5)
+        self.defenition_duration_caixa_texto.delete(0, tk.END)
+        self.defenition_duration_caixa_texto.insert(0, str(self.duration_caixa_texto))
+        self.defenition_duration_caixa_texto.pack(side=tk.RIGHT)
 
         m5 = tk.PanedWindow(m3, orient=tk.VERTICAL)
         m3.add(m5)
@@ -337,15 +367,19 @@ class FUTOTAL:
         m5.add(m7)
         m7.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m7, text='Rectangle:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m7, from_=0, to=1000, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_duration_rectangle = tk.Spinbox(m7, from_=0, to=1000, width=5)
+        self.defenition_duration_rectangle.delete(0, tk.END)
+        self.defenition_duration_rectangle.insert(0, str(self.duration_retangle))
+        self.defenition_duration_rectangle.pack(side=tk.RIGHT)
 
         m10 = tk.PanedWindow(m5, orient=tk.VERTICAL)
         m5.add(m10)
         m10.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m10, text='Elipse:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m10, from_=0, to=1000, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_duration_elipse = tk.Spinbox(m10, from_=0, to=1000, width=5)
+        self.defenition_duration_elipse.delete(0, tk.END)
+        self.defenition_duration_elipse.insert(0, str(self.duration_elipse))
+        self.defenition_duration_elipse.pack(side=tk.RIGHT)
         m11 = tk.PanedWindow(m5, orient=tk.VERTICAL)
         m5.add(m11)
         m11.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -361,63 +395,88 @@ class FUTOTAL:
         m15 = tk.PanedWindow(m13, orient=tk.VERTICAL, height=30)
         m13.add(m15)
         m15.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
 
         m16 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m16)
         m16.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m16, text='Arrow of Pass:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m16, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_passe = tk.Spinbox(m16, from_=0, to=100, width=5)
+        self.defenition_opacity_passe.delete(0, tk.END)
+        self.defenition_opacity_passe.insert(0, str(self.opacity_passe))
+        self.defenition_opacity_passe.pack(side=tk.RIGHT)
 
         m17 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m17)
         m17.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m17, text='Arrow of Movement:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m17, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_movimento = tk.Spinbox(m17, from_=0, to=100, width=5)
+        self.defenition_opacity_movimento.delete(0, tk.END)
+        self.defenition_opacity_movimento.insert(0, str(self.opacity_movimento))
+        self.defenition_opacity_movimento.pack(side=tk.RIGHT)
 
         m18 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m18)
         m18.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m18, text='Retangle:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m18, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_retangle = tk.Spinbox(m18, from_=0, to=100, width=5)
+        self.defenition_opacity_retangle.delete(0, tk.END)
+        self.defenition_opacity_retangle.insert(0, str(self.opacity_retangle))
+        self.defenition_opacity_retangle.pack(side=tk.RIGHT)
+
+        m56 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m56)
+        m56.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m56, text='Elipse:').pack(side=tk.LEFT)
+        self.defenition_opacity_elipse = tk.Spinbox(m56, from_=0, to=100, width=5)
+        self.defenition_opacity_elipse.delete(0, tk.END)
+        self.defenition_opacity_elipse.insert(0, str(self.opacity_elipse))
+        self.defenition_opacity_elipse.pack(side=tk.RIGHT)
 
         m23 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m23)
         m23.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m23, text='Text Box:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m23, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_caixa_texto = tk.Spinbox(m23, from_=0, to=100, width=5)
+        self.defenition_opacity_caixa_texto.delete(0, tk.END)
+        self.defenition_opacity_caixa_texto.insert(0, str(self.opacity_caixa_texto))
+        self.defenition_opacity_caixa_texto.pack(side=tk.RIGHT)
 
         m19 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m19)
         m19.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m19, text='Area between players:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m19, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_area_jogadores = tk.Spinbox(m19, from_=0, to=100, width=5)
+        self.defenition_opacity_area_jogadores.delete(0, tk.END)
+        self.defenition_opacity_area_jogadores.insert(0, str(self.opacity_area_jogadores))
+        self.defenition_opacity_area_jogadores.pack(side=tk.RIGHT)
 
         m20 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m20)
         m20.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m20, text='Line between players:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m20, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_linha_jogadores = tk.Spinbox(m20, from_=0, to=100, width=5)
+        self.defenition_opacity_linha_jogadores.delete(0, tk.END)
+        self.defenition_opacity_linha_jogadores.insert(0, str(self.opacity_linha_jogadores))
+        self.defenition_opacity_linha_jogadores.pack(side=tk.RIGHT)
 
         m21 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m21)
         m21.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m21, text='Select player:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m21, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_selecionar_jogador = tk.Spinbox(m21, from_=0, to=100, width=5)
+        self.defenition_opacity_selecionar_jogador.delete(0, tk.END)
+        self.defenition_opacity_selecionar_jogador.insert(0, str(self.opacity_selecionar_jogador))
+        self.defenition_opacity_selecionar_jogador.pack(side=tk.RIGHT)
 
         m22 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m22)
         m22.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m22, text='Detect player:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m22, from_=0, to=100, width=5)
-        w.pack(side=tk.RIGHT)
+        self.defenition_opacity_detetar_jogador = tk.Spinbox(m22, from_=0, to=100, width=5)
+        self.defenition_opacity_detetar_jogador.delete(0, tk.END)
+        self.defenition_opacity_detetar_jogador.insert(0, str(self.opacity_detetar_jogador))
+        self.defenition_opacity_detetar_jogador.pack(side=tk.RIGHT)
 
         m14 = tk.PanedWindow(m12, orient=tk.VERTICAL)
         m12.add(m14)
@@ -426,7 +485,7 @@ class FUTOTAL:
         m20 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m20)
         m20.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m20, text='Text of Player:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m20, text='Text of Player:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
         m24 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m24)
         m24.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -434,52 +493,42 @@ class FUTOTAL:
         m27 = tk.PanedWindow(m24, orient=tk.VERTICAL)
         m24.add(m27)
         m27.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m27, text='Font Size:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m27, from_=0, to=36, width=5)
-        w.pack(side=tk.RIGHT)
-
-        m28 = tk.PanedWindow(m24, orient=tk.VERTICAL)
-        m24.add(m28)
-        m28.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m28, text='Type:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("Helvetica")
-        data = ("System","Terminal","Fixedsys","Modern","Helvetica","Roman","Script","Courier","MS Serif","MS Sans Serif","Small Fonts","Marlett","Arial","Calibri","Consolas")
-        w = Combobox(m28, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
+        tk.Label(m27, text='Font Type:').pack(side=tk.LEFT)
+        self.defenition_tamanho_letra_jogador = tk.Spinbox(m27, from_=0, to=4, width=5)
+        self.defenition_tamanho_letra_jogador.delete(0, tk.END)
+        self.defenition_tamanho_letra_jogador.insert(0, str(self.tamanho_letra_texto_jogador))
+        self.defenition_tamanho_letra_jogador.pack(side=tk.RIGHT)
 
         m29 = tk.PanedWindow(m24, orient=tk.VERTICAL)
         m24.add(m29)
         m29.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m29, text='Color:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("black")
         data = (
             "green", "red", "blue", "yellow", "gray",
-            "orange",
-            "black")
-        w = Combobox(m29, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
+            "black","white")
+        self.defenition_cor_letra = Combobox(m29, values=data)
+        if self.color_texto_jogador == (255,255,255):
+            self.defenition_cor_letra.current(6)
+        elif self.color_texto_jogador == (0,255,0):
+            self.defenition_cor_letra.current(0)
+        elif self.color_texto_jogador == (0,0,255):
+            self.defenition_cor_letra.current(1)
+        elif self.color_texto_jogador == (255,255,0):
+            self.defenition_cor_letra.current(2)
+        elif self.color_texto_jogador == (0,255,255):
+            self.defenition_cor_letra.current(3)
+        elif self.color_texto_jogador == (128,128,128):
+            self.defenition_cor_letra.current(4)
+        elif self.color_texto_jogador == (0,0,0):
+            self.defenition_cor_letra.current(5)
+        self.defenition_cor_letra.pack(side=tk.RIGHT)
 
-        m30 = tk.PanedWindow(m24, orient=tk.VERTICAL)
-        m24.add(m30)
-        m30.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m30, text='Style:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("normal")
-        data = (
-            "normal", "bold", "italic")
-        w = Combobox(m30, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
 
         m26 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m26)
         m26.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        tk.Label(m26, text='Text Box:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m26, text='Text Box:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
         m25 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m25)
         m25.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -487,49 +536,179 @@ class FUTOTAL:
         m31 = tk.PanedWindow(m25, orient=tk.VERTICAL)
         m25.add(m31)
         m31.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m31, text='Font Size:').pack(side=tk.LEFT)
-        w = tk.Spinbox(m31, from_=0, to=36, width=5)
-        w.pack(side=tk.RIGHT)
-
-        m31 = tk.PanedWindow(m25, orient=tk.VERTICAL)
-        m25.add(m31)
-        m31.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m31, text='Type:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("Helvetica")
-        data = ("System", "Terminal", "Fixedsys", "Modern","Helvetica", "Roman", "Script", "Courier", "MS Serif", "MS Sans Serif",
-                "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
-        w = Combobox(m31, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
+        tk.Label(m31, text='Font Type:').pack(side=tk.LEFT)
+        self.defenition_tamanho_letra_caixa_texto = tk.Spinbox(m31, from_=0, to=4, width=5)
+        self.defenition_tamanho_letra_caixa_texto.delete(0, tk.END)
+        self.defenition_tamanho_letra_caixa_texto.insert(0, str(self.tamanho_letra_caixa_texto))
+        self.defenition_tamanho_letra_caixa_texto.pack(side=tk.RIGHT)
 
         m32 = tk.PanedWindow(m25, orient=tk.VERTICAL)
         m25.add(m32)
         m32.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m32, text='Color:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("black")
+
         data = (
             "green", "red", "blue", "yellow", "gray",
-            "orange",
-            "black")
-        w = Combobox(m32, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
+            "black", "white")
+        self.defenition_cor_letra_textbox = Combobox(m32, values=data)
+        if self.color_caixa_texto == (255, 255, 255):
+            self.defenition_cor_letra_textbox.current(6)
+        elif self.color_caixa_texto == (0, 255, 0):
+            self.defenition_cor_letra_textbox.current(0)
+        elif self.color_caixa_texto == (0, 0, 255):
+            self.defenition_cor_letra_textbox.current(1)
+        elif self.color_caixa_texto == (255, 255, 0):
+            self.defenition_cor_letra_textbox.current(2)
+        elif self.color_caixa_texto == (0, 255, 255):
+            self.defenition_cor_letra_textbox.current(3)
+        elif self.color_caixa_texto == (128, 128, 128):
+            self.defenition_cor_letra_textbox.current(4)
+        elif self.color_caixa_texto == (0, 0, 0):
+            self.defenition_cor_letra_textbox.current(5)
+        self.defenition_cor_letra_textbox.pack(side=tk.RIGHT)
 
         m33 = tk.PanedWindow(m25, orient=tk.VERTICAL)
         m25.add(m33)
         m33.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        tk.Label(m33, text='Style:').pack(side=tk.LEFT)
-        var = tk.StringVar()
-        var.set("normal")
+        tk.Label(m33, text='Box:').pack(side=tk.LEFT)
         data = (
-            "normal", "bold", "italic")
-        w = Combobox(m33, values=data)
-        w.current(0)
-        w.pack(side=tk.RIGHT)
+            "green", "red", "blue", "yellow", "gray",
+            "black", "white")
+        self.defenition_cor_textbox = Combobox(m33, values=data)
+        if self.color_caixa == (255, 255, 255):
+            self.defenition_cor_textbox.current(6)
+        elif self.color_caixa == (0, 255, 0):
+            self.defenition_cor_textbox.current(0)
+        elif self.color_caixa == (0, 0, 255):
+            self.defenition_cor_textbox.current(1)
+        elif self.color_caixa == (255, 255, 0):
+            self.defenition_cor_textbox.current(2)
+        elif self.color_caixa == (0, 255, 255):
+            self.defenition_cor_textbox.current(3)
+        elif self.color_caixa == (128, 128, 128):
+            self.defenition_cor_textbox.current(4)
+        elif self.color_caixa == (0, 0, 0):
+            self.defenition_cor_textbox.current(5)
+        self.defenition_cor_textbox.pack(side=tk.RIGHT)
 
-        app.mainloop()
+        m50 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m1.add(m50)
+        m50.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        ok = tk.Button(m50, text="   OK   ", command=self.saveDefenitions)
+        ok.pack(side=tk.RIGHT)
+        cancel = tk.Button(m50, text="Cancel",command=self.cancelDefenitions)
+        cancel.pack(side=tk.RIGHT)
+
+        self.settings.mainloop()
+
+    def windowsHelp(self):
+        self.settings = tk.Tk()
+        self.settings.title("Help")
+        self.settings.geometry("500x450")
+        color = "#%02x%02x%02x" % (66, 162, 80)
+
+        self.settings.iconbitmap(r'.\data\dp11.ico')
+        m1 = tk.PanedWindow(self.settings, orient=tk.VERTICAL)
+        m1.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m2)
+        m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m2, text='Select Players', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m3 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m3)
+        m3.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m3, text='edidwefbwiefbifbiewfweifbifwbfweifbwefiuw\ndifbwiefbwieffiewfbwfebibweifbweifb\nifbhiwefiwbfiwefifeyifwfiy', font='Helvetica 12',justify=tk.LEFT).pack(side=tk.LEFT)
+
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m2)
+        m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m2, text='Select Players', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m4 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m4)
+        m4.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m4,
+             text='edidwefbwiefbifbiewfweifbifwbfweifbwefiuw\ndifbwiefbwieffiewfbwfebibweifbweifb\nifbhiwefiwbfiwefifeyifwfiy',
+             font='Helvetica 12', justify=tk.LEFT).pack(side=tk.LEFT)
+
+        m5 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m5)
+        m5.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m5, text='Select Players', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m6 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m6)
+        m6.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m6,
+                 text='edidwefbwiefbifbiewfweifbifwbfweifbwefiuw\ndifbwiefbwieffiewfbwfebibweifbweifb\nifbhiwefiwbfiwefifeyifwfiy',
+                 font='Helvetica 12', justify=tk.LEFT).pack(side=tk.LEFT)
+
+    def saveDefenitions(self):
+        self.duration_seta_passe = int(self.defenition_duration_passe.get())
+        self.duration_seta_movimanto = int(self.defenition_duration_movimento.get())
+        self.duration_caixa_texto = int(self.defenition_duration_caixa_texto.get())
+        self.duration_retangle = int(self.defenition_duration_rectangle.get())
+        self.duration_elipse = int(self.defenition_duration_elipse.get())
+
+        #opacity
+        self.opacity_passe = int(self.defenition_opacity_passe.get())
+        self.opacity_movimento = int(self.defenition_opacity_movimento.get())
+        self.opacity_retangle = int(self.defenition_opacity_retangle.get())
+        self.opacity_caixa_texto = int(self.defenition_opacity_caixa_texto.get())
+        self.opacity_area_jogadores = int(self.defenition_opacity_area_jogadores.get())
+        self.opacity_linha_jogadores = int(self.defenition_opacity_linha_jogadores.get())
+        self.opacity_selecionar_jogador = int(self.defenition_opacity_selecionar_jogador.get())
+        self.opacity_detetar_jogador = int(self.defenition_opacity_detetar_jogador.get())
+        self.opacity_elipse = int(self.defenition_opacity_elipse.get())
+        self.tamanho_letra_texto_jogador = int(self.defenition_tamanho_letra_jogador.get())
+        if str(self.defenition_cor_letra.get()) == "white":
+            self.color_texto_jogador = (255,255,255)
+        elif str(self.defenition_cor_letra.get()) == "green":
+            self.color_texto_jogador = (0,255,0)
+        elif str(self.defenition_cor_letra.get()) == "red":
+            self.color_texto_jogador = (0,0,255)
+        elif str(self.defenition_cor_letra.get()) == "blue":
+            self.color_texto_jogador = (255,255,0)
+        elif str(self.defenition_cor_letra.get())== "yellow":
+            self.color_texto_jogador = (0,255,255)
+        elif str(self.defenition_cor_letra.get()) == "gray":
+            self.color_texto_jogador = (128,128,128)
+        elif str(self.defenition_cor_letra.get()) == "black":
+            self.color_texto_jogador = (0,0,0)
+        self.tamanho_letra_caixa_texto = int(self.defenition_tamanho_letra_caixa_texto.get())
+        if str(self.defenition_cor_letra_textbox.get()) == "white":
+            self.color_caixa = (255,255,255)
+        elif str(self.defenition_cor_letra_textbox.get()) == "green":
+            self.color_caixa = (0,255,0)
+        elif str(self.defenition_cor_letra_textbox.get()) == "red":
+            self.color_caixa = (0,0,255)
+        elif str(self.defenition_cor_letra_textbox.get()) == "blue":
+            self.color_caixa = (255,255,0)
+        elif str(self.defenition_cor_letra_textbox.get())== "yellow":
+            self.color_caixa = (0,255,255)
+        elif str(self.defenition_cor_letra_textbox.get()) == "gray":
+            self.color_caixa = (128,128,128)
+        elif str(self.defenition_cor_letra_textbox.get()) == "black":
+            self.color_caixa = (0,0,0)
+
+        if str(self.defenition_cor_textbox.get()) == "white":
+            self.color_caixa_texto = (255, 255, 255)
+        elif str(self.defenition_cor_textbox.get()) == "green":
+            self.color_caixa_texto = (0, 255, 0)
+        elif str(self.defenition_cor_textbox.get()) == "red":
+            self.color_caixa_texto = (0, 0, 255)
+        elif str(self.defenition_cor_textbox.get()) == "blue":
+            self.color_caixa_texto = (255, 255, 0)
+        elif str(self.defenition_cor_textbox.get()) == "yellow":
+            self.color_caixa_texto = (0, 255, 255)
+        elif str(self.defenition_cor_textbox.get()) == "gray":
+            self.color_caixa_texto = (128, 128, 128)
+        elif str(self.defenition_cor_textbox.get()) == "black":
+            self.color_caixa_texto = (0, 0, 0)
+
+        self.settings.destroy()
+
+    def cancelDefenitions(self):
+        self.settings.destroy()
+
 
     def makeScreenshot(self):
         self.screenshot = True
@@ -549,78 +728,135 @@ class FUTOTAL:
         # cap.set(cv2.CAP_PROP_FRAME_WIDTH,width)
         # cap.set(cv2.CAP_PROP_FRAME_HEIGHT,height)
 
+        m20 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m1.add(m20)
+        m20.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
         m2 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m1.add(m2)
+        m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         # Creating a photoimage object to use image
-        self.elipse = tk.PhotoImage(file=r'./data/elipse.png')
-        self.line = tk.PhotoImage(file=r'./data/line.png')
-        self.line_drop = tk.PhotoImage(file=r'./data/line_drop.png')
-        self.quadrado = tk.PhotoImage(file=r'./data/quadrado.png')
-        self.seta = tk.PhotoImage(file=r'./data/seta.png')
-        self.seta_yellow = tk.PhotoImage(file=r'./data/seta_passe.png')
-        self.icon = tk.PhotoImage(file=r'./data/icon.png')
-        self.textBox = tk.PhotoImage(file=r'./data/textBox.png')
+
+        self.elipse = tk.PhotoImage(file=r'./data/ellipse911.png')
+        self.line = tk.PhotoImage(file=r'./data/setLine911.png')
+        self.polly = tk.PhotoImage(file=r'./data/setPolly911.png')
+        self.rubber = tk.PhotoImage(file=r'./data/rubber98.png')
+        self.quadrado = tk.PhotoImage(file=r'./data/rectangle911.png')
+        self.seta = tk.PhotoImage(file=r'./data/moviment911.png')
+        self.seta_yellow = tk.PhotoImage(file=r'./data/pass911.png')
+        self.icon = tk.PhotoImage(file=r'./data/select911.png')
+        self.textBox = tk.PhotoImage(file=r'./data/textBox911.png')
+        self.quadrado_drop = tk.PhotoImage(file=r'./data/quadrado.png')
+        self.elipse_drop = tk.PhotoImage(file=r'./data/elipse.png')
 
         # here, image option is used to
         # set image on button
-        self.Elipse = tk.Button(m2, text="Draw Ellipse", image=self.elipse, command=self.elipseONOFF, compound="top")
-        self.Elipse.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Elipse, text='Click on the exact place where the ellipse starts.\n'
-                                        'And then click on the point where it ends.')
-
-        # here, image option is used to
-        # set image on button
-        self.Line = tk.Button(m2, text="Draw Line", image=self.line, command=self.lineONOFF, compound="top")
-        self.Line.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Line, text='Click on the player where the line will start.\n'
-                                      'Then click on the second player where the line will end.')
-
-        self.Line_Drop = tk.Button(m2, text="Drop Line", image=self.line_drop, command=self.line_dropONOFF,
-                                   compound="top")
-        self.Line_Drop.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Line_Drop, text='Click on the player that contains the line.')
-
-        self.Line_Drop_All = tk.Button(m2, text="Drop Line All", image=self.line_drop, command=self.line_drop_all,
-                                       compound="top")
-        self.Line_Drop_All.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Line_Drop_All, text='Click on this button and delete all the lines.')
-
-        self.Polly = tk.Button(m2, text="Draw polly\nbetween players", image=self.line, command=self.pollyONOFF,
-                               compound="top")
-        self.Polly.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Polly, text='Click on the players that will be part of the polygon.')
-
-        self.Polly_Drop = tk.Button(m2, text="Remove polly\nbetween players", image=self.line,
-                                    command=self.polly_dropONOFF,
-                                    compound="top")
-        self.Polly_Drop.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Polly_Drop, text='Click on the polygon player you want to remove.')
-
-        self.Quadrado = tk.Button(m2, text="Draw Area", image=self.quadrado, command=self.quadradoONOFF, compound="top")
-        self.Quadrado.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Quadrado, text='Click on the exact place where the square starts.\n'
-                                          'And then click on the point where it ends.')
-
-        self.Seta = tk.Button(m2, text="Draw Movement", image=self.seta, command=self.setaONOFF, compound="top")
-        self.Seta.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Seta, text='Click on the exact spot where the movement starts.\n'
-                                      'And then click on the place where it ends.')
-        self.Seta_Passe = tk.Button(m2, text="Draw Pass", image=self.seta_yellow, command=self.seta_passeONOFF,
-                                    compound="top")
-        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.TOP)
-        CreateToolTip(self.Seta_Passe, text='Click on the exact spot where the pass starts.\n'
-                                            'And then click on the place where it ends.')
-
-        self.Icon = tk.Button(m2, text="Select Player", image=self.icon, command=self.selectONOFF, compound="top")
-        self.Icon.pack(fill=tk.BOTH, side=tk.TOP)
+        self.Icon = tk.Button(m20, text="SelectPlayer", image=self.icon, command=self.selectONOFF, compound="top")
+        self.Icon.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
         CreateToolTip(self.Icon, text='Click on the player you want to select.\n'
                                       'Click again to deselect')
 
-        self.TextBox = tk.Button(m2, text="Draw textbox", image=self.textBox, command=self.textBoxONOFF, compound="top")
-        self.TextBox.pack(fill=tk.BOTH, side=tk.TOP)
+        m30 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m30)
+        m30.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Line = tk.Button(m30, text="Draw Line\nBetween players", image=self.line, command=self.lineONOFF,
+                              compound="top")
+        self.Line.pack(fill=tk.BOTH, side=tk.LEFT)
+        CreateToolTip(self.Line, text='Click on the player where the line will start.\n'
+                                      'Then click on the second player where the line will end.')
+
+        self.Line_Drop = tk.Button(m30, text="Drop\nLine", image=self.rubber, command=self.line_dropONOFF,
+                                   compound="top")
+        self.Line_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Line_Drop, text='Click on the player that contains the line.')
+
+        m31 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m31)
+        m31.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Polly = tk.Button(m31, text="Draw Area\nBetween players", image=self.polly, command=self.pollyONOFF,
+                               compound="top")
+        self.Polly.pack(fill=tk.BOTH, side=tk.LEFT)
+        CreateToolTip(self.Polly,
+                      text='Draw area between players\nClick on the players that will be part of the polygon.')
+        self.Polly_Drop = tk.Button(m31, text="Drop\nArea", image=self.rubber,
+                                    command=self.polly_dropONOFF, compound="top")
+        self.Polly_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Polly_Drop,
+                      text='Remove area between playeres\nClick on the polygon player you want to remove.')
+
+        m32 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m32)
+        m32.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Seta = tk.Button(m32, text="Draw\nMovement", image=self.seta, command=self.setaONOFF, compound="top")
+        self.Seta.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
+        CreateToolTip(self.Seta, text='Click on the exact spot where the movement starts.\n'
+                                      'And then click on the place where it ends.')
+
+        self.Seta_Drop = tk.Button(m32, text="Drop\nMove", image=self.rubber, command=self.seta_dropONOFF,
+                                   compound="top")
+        self.Seta_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Seta_Drop, text='Click on the area that you want to drop')
+
+        m33 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m33)
+        m33.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Seta_Passe = tk.Button(m33, text="Draw\nPass", image=self.seta_yellow, command=self.seta_passeONOFF,
+                                    compound="top")
+        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
+        CreateToolTip(self.Seta_Passe, text='Click on the exact spot where the pass starts.\n'
+                                            'And then click on the place where it ends.')
+
+        self.Seta_Passe_Drop = tk.Button(m33, text="Drop\nPass", image=self.rubber, command=self.seta_drop_passeONOFF,
+                                         compound="top")
+        self.Seta_Passe_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Seta_Passe_Drop, text='Click on the area that you want to drop')
+
+        m34 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m34)
+        m34.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Quadrado = tk.Button(m34, text="Draw\nRectangle", image=self.quadrado, command=self.quadradoONOFF,
+                                  compound="top")
+        self.Quadrado.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
+        CreateToolTip(self.Quadrado, text='Click on the exact place where the square starts.\n'
+                                          'And then click on the point where it ends.')
+
+        self.Quadrado_Drop = tk.Button(m34, text="Drop\n", image=self.rubber, command=self.quadrado_dropONOFF,
+                                       compound="top")
+        self.Quadrado_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Quadrado_Drop, text='Click on the area that you want to drop')
+
+        m35 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m35)
+        m35.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.Elipse = tk.Button(m35, text="Draw\nEllipse", image=self.elipse, command=self.elipseONOFF, compound="top")
+        self.Elipse.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
+        CreateToolTip(self.Elipse, text='Click on the exact place where the ellipse starts.\n'
+                                        'And then click on the point where it ends.')
+
+        self.Elipse_Drop = tk.Button(m35, text="Drop\n", image=self.rubber, command=self.elipse_dropONOFF,
+                                     compound="top")
+        self.Elipse_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.Elipse_Drop, text='Click on the ellipse that you want to drop')
+
+        m36 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m2.add(m36)
+        m36.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        self.TextBox = tk.Button(m36, text="Textbox\n", image=self.textBox, command=self.textBoxONOFF, compound="top")
+        self.TextBox.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.TextBox, text='Click on the exact spot where the textbox starts.\n'
                                          'And then click on the exact spot where the textbox ends')
+
+        self.TextBox_Drop = tk.Button(m36, text="Drop\n", image=self.rubber, command=self.textBox_dropONOFF,
+                                      compound="top")
+        self.TextBox_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
+        CreateToolTip(self.TextBox_Drop, text='Click on the area that you want to drop')
 
         # variavel que serve para guardar a cor original do butao
         self.orig_color = self.Icon.cget("background")
@@ -632,20 +868,30 @@ class FUTOTAL:
                 self.Line.configure(bg=self.orig_color)
             if self.elipseON == False:
                 self.Elipse.configure(bg=self.orig_color)
+            if self.elipse_dropON == False:
+                self.Elipse_Drop.configure(bg=self.orig_color)
             if self.quadradoON == False:
                 self.Quadrado.configure(bg=self.orig_color)
+            if self.quadrado_dropON == False:
+                self.Quadrado_Drop.configure(bg=self.orig_color)
             if self.setaON == False:
                 self.Seta.configure(bg=self.orig_color)
+            if self.seta_dropON == False:
+                self.Seta_Drop.configure(bg=self.orig_color)
             if self.line_dropON == False:
                 self.Line_Drop.configure(bg=self.orig_color)
             if self.seta_passeON == False:
                 self.Seta_Passe.configure(bg=self.orig_color)
+            if self.seta_passe_dropON == False:
+                self.Seta_Passe_Drop.configure(bg=self.orig_color)
             if self.pollyON == False:
                 self.Polly.configure(bg=self.orig_color)
             if self.polly_dropON == False:
                 self.Polly_Drop.configure(bg=self.orig_color)
             if self.textBoxON == False:
                 self.TextBox.configure(bg=self.orig_color)
+            if self.textBox_dropON == False:
+                self.TextBox_Drop.configure(bg=self.orig_color)
 
             m2.after(1000, colorsButtons)
 
@@ -905,14 +1151,15 @@ class FUTOTAL:
         m1.add(m0)
 
         self.w2 = tk.Scale(m0, from_=0, to=self.length, variable=self.selectFrame, orient=tk.HORIZONTAL,
-                           command=self.selectFrameScale)
+                           command=self.selectFrameScale, showvalue=0)
         self.w2.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
 
         m2 = tk.PanedWindow(m1, orient=tk.HORIZONTAL)
         m1.add(m2)
 
         var = tk.StringVar()
-        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0)
+        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0, height=2,
+                               font=cv2.FONT_HERSHEY_DUPLEX)
         if (self.isLogo == False):
             var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
         else:
@@ -1043,7 +1290,7 @@ class FUTOTAL:
                 #              (255, 0, 255), -1)
 
                 overlay_detect = frame.copy()
-                alpha_detect = 0.4
+                alpha_detect = int(self.opacity_selecionar_jogador)/100
 
                 cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
                             360,
@@ -1065,7 +1312,7 @@ class FUTOTAL:
                 #              (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])),  (0, 0, 255), -1)
                 if self.pause == True and self.screenshot == False:
                     overlay_detect = frame.copy()
-                    alpha_detect = 0.4
+                    alpha_detect = int(self.opacity_detetar_jogador)/100
                     cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
                                 360,
                                 (200, 200, 200), -1, 15)
@@ -1080,8 +1327,8 @@ class FUTOTAL:
                     while self.array_lists_id_with_names[count] != track.track_id:
                         count = count + 1
                     cv2.putText(frame, str(self.array_lists_names_of_player[count]),
-                                (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
-                                (255, 255, 255), 1)
+                                (int(bbox[0]), int(bbox[1] - 10)), self.tamanho_letra_texto_jogador, 0.75,
+                                self.color_texto_jogador, 1)
                     try:
                         id = self.list.index(str(track.track_id) + " - Player", 0, len(self.list))
                         self.list[id] = str(track.track_id) + " - " + str(self.array_lists_names_of_player[count])
@@ -1089,7 +1336,7 @@ class FUTOTAL:
                         print("Player nao encontrado")
 
                 else:
-                    cv2.putText(frame, "", (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75, (255, 255, 255),
+                    cv2.putText(frame, "", (int(bbox[0]), int(bbox[1] - 10)), self.tamanho_letra_texto_jogador, 0.75, (255, 255, 255),
                                 1)
 
             else:
@@ -1099,8 +1346,8 @@ class FUTOTAL:
                         while self.array_lists_id_with_names[count] != track.track_id:
                             count = count + 1
                         cv2.putText(frame, str(track.track_id) + " - " + str(self.array_lists_names_of_player[count]),
-                                    (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
-                                    (255, 255, 255), 1)
+                                    (int(bbox[0]), int(bbox[1] - 10)), self.tamanho_letra_texto_jogador, 0.75,
+                                    self.color_texto_jogador, 1)
                         try:
                             id = self.list.index(str(track.track_id) + " - Player", 0, len(self.list))
                             self.list[id] = str(track.track_id) + " - " + str(self.array_lists_names_of_player[count])
@@ -1108,7 +1355,8 @@ class FUTOTAL:
                             print("Player nao encontrado")
 
                     else:
-                        cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75, (255, 255, 255),
+                        cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)) , self.tamanho_letra_texto_jogador, 0.75,
+                                    self.color_texto_jogador,
                                     1)
 
             self.listbox.delete(0, tk.END)
@@ -1190,19 +1438,25 @@ class FUTOTAL:
                     end_point = (int(self.coordinates_arrow_x_init[contador_setas]),
                                  int(self.coordinates_arrow_y_init[contador_setas]))
 
-                color = self.color_passed
-                thickness = 1
-                type = cv2.LINE_AA
-                v_seta= 0.2
                 if self.arrow_type[contador_setas] == 1:
                     color = self.color_movement
-                    thickness = 3
-                    type = 0
-                    v_seta = 0.1
+                    thickness = 4
+                    tipLength = 0.1
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < self.duration_seta_movimanto:
+                        overlay_arrow = frame.copy()
+                        alpha_arrow = int(self.opacity_movimento)/100
+                        cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
+                        frame = cv2.addWeighted(overlay_arrow, alpha_arrow, frame, 1 - alpha_arrow, 0)
 
-
-                if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 25:
-                    cv2.arrowedLine(frame, start_point, end_point, color, thickness,type,0,v_seta)
+                else:
+                    color = self.color_passed
+                    thickness = 5
+                    tipLength = 0.1
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < self.duration_seta_passe:
+                        overlay_arrow = frame.copy()
+                        alpha_arrow = int(self.opacity_passe)/100
+                        cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
+                        frame = cv2.addWeighted(overlay_arrow, alpha_arrow, frame, 1 - alpha_arrow, 0)
 
                 contador_setas = contador_setas + 1
 
@@ -1237,9 +1491,9 @@ class FUTOTAL:
                     center_y = int(end_point[1] + ((start_point[1] - end_point[1]) / 2))
                     elipse_widht = int(((start_point[1] - end_point[1]) / 2) + 1)
 
-                if int(self.numframes) - int(self.frame_elipse_create[contador_elipse]) < 25:
+                if int(self.numframes) - int(self.frame_elipse_create[contador_elipse]) < self.duration_elipse:
                     overlay_elipse = frame.copy()
-                    alpha_elipse = 0.5
+                    alpha_elipse = self.opacity_elipse
                     cv2.ellipse(overlay_elipse, (center_x, center_y),
                                 (elipse_height, elipse_widht), 0, 0, 360, color, -1)
 
@@ -1266,9 +1520,9 @@ class FUTOTAL:
 
                 thickness = -1
 
-                if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < 25:
+                if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < self.duration_retangle:
                     overlay_detect = frame.copy()
-                    alpha_detect = 0.4
+                    alpha_detect = int(self.opacity_retangle)/100
                     cv2.rectangle(overlay_detect, start_point, end_point, color, thickness)
                     frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
 
@@ -1312,7 +1566,7 @@ class FUTOTAL:
                         nppts = np.stack((arr1, arr2), axis=1)
                         nppts = nppts.astype(int)
                         overlay_poly = frame.copy()
-                        alpha_poly = 0.2
+                        alpha_poly = int(self.opacity_area_jogadores)/100
 
                         cv2.fillConvexPoly(overlay_poly, nppts, self.color_polly)
                         frame = cv2.addWeighted(overlay_poly, alpha_poly, frame, 1 - alpha_poly, 0)
@@ -1332,25 +1586,23 @@ class FUTOTAL:
                 # textInput = "Passe errado do Sergio Ramos"
                 # textInput = input("Text to add.\n")
 
-                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 25:
+                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < self.duration_caixa_texto:
                     overlay_textBox = frame.copy()
-                    alpha_textBox = 0.3
+                    alpha_textBox = int(self.opacity_caixa_texto)/100
                     try:
                         cv2.rectangle(overlay_textBox, (int(self.coordinates_textBox_x_init[contador_textBox] - 5),
                                                         int(self.coordinates_textBox_y_init[contador_textBox] - 30)),
                                       (int(self.coordinates_textBox_x_init[contador_textBox]) + (
                                               (len(self.coordinates_textBox_text[contador_textBox])) * 13) + 5,
                                        int(self.coordinates_textBox_y_init[contador_textBox] + 20)),
-                                      (255, 255, 255), -1)
+                                      self.color_caixa, -1)
                         frame = cv2.addWeighted(overlay_textBox, alpha_textBox, frame, 1 - alpha_textBox, 0)
                         cv2.putText(frame, self.coordinates_textBox_text[contador_textBox], start_point,
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.color_caixa_texto, 2)
                     except:
                         print("Waiting for text box")
 
                 contador_textBox = contador_textBox + 1
-
-
 
         scale_percent = self.zoom  # percent of original size
         width = int(frame.shape[1] * scale_percent / 100)
@@ -1365,7 +1617,7 @@ class FUTOTAL:
 
         if self.zoom == 150:
             if self.zona_de_zoom == "top_left":
-                M = np.float32([[1, 0, (cols/6)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 10)]])
@@ -1377,7 +1629,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right":
-                M = np.float32([[1, 0, -(cols/6)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 10)]])
@@ -1389,7 +1641,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left":
-                M = np.float32([[1, 0, (cols/6)], [0, 1, -(rows/7)]])
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 10)]])
@@ -1401,7 +1653,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right":
-                M = np.float32([[1, 0, -(cols/6)], [0, 1, -(rows/7)]])
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 10)]])
@@ -1414,10 +1666,10 @@ class FUTOTAL:
                 frame = cv2.warpAffine(frame, M, (cols, rows))
         if self.zoom == 200:
             if self.zona_de_zoom == "top_left":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, (rows/5)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_center":
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 5)]])
@@ -1426,10 +1678,10 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, (rows/5)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_medium":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_center":
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 5)]])
@@ -1438,7 +1690,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, -(rows/5)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left_medium":
                 M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 7)]])
@@ -1453,7 +1705,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_medium":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, -(rows/7)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_center":
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 5)]])
@@ -1497,7 +1749,7 @@ class FUTOTAL:
         # função : que deve ser chamada.
         # * args : outras opções.
 
-    def change_zoom(self,event):
+    def change_zoom(self, event):
         self.stop()
         print("Coordenates")
         x = event.x
@@ -1507,37 +1759,40 @@ class FUTOTAL:
             # warpAffine does appropriate shifting given the
             # translation matrix.
 
-            if x < (self.w_zoom / 4) and y<(self.h_zoom/4):
+            if x < (self.w_zoom / 4) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_left"
-            elif x < (self.w_zoom / 4)  and y < (self.h_zoom / 2):
+            elif x < (self.w_zoom / 4) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_left_medium"
-            elif x < (self.w_zoom / 2)  and y < (self.h_zoom / 4):
+            elif x < (self.w_zoom / 2) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_left_center"
             elif x > (self.w_zoom / 4) and x < (self.w_zoom / 2) and y > (self.h_zoom / 4) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_left_center_medium"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y < (self.h_zoom / 4):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_right"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y < (self.h_zoom / 2):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_right_medium"
-            elif x > (self.w_zoom / 2)  and y < (self.h_zoom / 4):
+            elif x > (self.w_zoom / 2) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_right_center"
-            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 4) and y < (self.h_zoom / 2):
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 4) and y < (
+                    self.h_zoom / 2):
                 self.zona_de_zoom = "top_right_center_medium"
-            elif x < (self.w_zoom / 4)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left"
-            elif x < (self.w_zoom / 4)  and y > (self.h_zoom / 2):
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom / 2):
                 self.zona_de_zoom = "bottom_left_medium"
-            elif x < (self.w_zoom / 2)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left_center"
-            elif x < (self.w_zoom / 2) and x > (self.w_zoom / 4) and y > (self.h_zoom / 2) and y < (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 2) and x > (self.w_zoom / 4) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left_center_medium"
             elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y > (self.h_zoom / 2):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2):
                 self.zona_de_zoom = "bottom_right_medium"
-            elif x > (self.w_zoom / 2)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x > (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right_center"
-            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2) and y < (self.h_zoom - (self.h_zoom / 4)):
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right_center_medium"
 
             else:
@@ -1700,6 +1955,19 @@ class FUTOTAL:
                 self.coordinates_arrow_y_final[num] = y
                 self.num_of_click_arrow = 0
 
+        if self.seta_dropON == True or self.seta_passe_dropON == True:
+            count = 0
+            while count < len(self.frame_arrow_create):
+                if self.coordinates_arrow_x_init[count] < x < self.coordinates_arrow_x_final[count] and \
+                        self.coordinates_arrow_y_init[count] < x < self.coordinates_arrow_y_final[count]:
+                    self.coordinates_arrow_x_init[count] = 0
+                    self.coordinates_arrow_x_final[count] = 0
+                    self.coordinates_arrow_y_init[count] = 0
+                    self.coordinates_arrow_y_final[count] = 0
+                    self.frame_arrow_create[count] = 0
+
+                count = count + 1
+
         if self.quadradoON == True:
             if self.num_of_click_rectangle == 0:
                 num = int(arrayLenght(self.frame_rectangle_create))
@@ -1710,9 +1978,33 @@ class FUTOTAL:
 
             else:
                 num = int(arrayLenght(self.coordinates_rectangle_x_final))
-                self.coordinates_rectangle_x_final[num] = x
-                self.coordinates_rectangle_y_final[num] = y
+
+                if x >= self.coordinates_rectangle_x_init[num]:
+                    self.coordinates_rectangle_x_final[num] = x
+                else:
+                    self.coordinates_rectangle_x_final[num] = self.coordinates_rectangle_x_init[num]
+                    self.coordinates_rectangle_x_init[num] = x
+
+                if y >= self.coordinates_rectangle_y_init[num]:
+                    self.coordinates_rectangle_y_final[num] = y
+                else:
+                    self.coordinates_rectangle_y_final[num] = self.coordinates_rectangle_y_init[num]
+                    self.coordinates_rectangle_y_init[num] = y
+
                 self.num_of_click_rectangle = 0
+
+        if self.quadrado_dropON == True:
+            count = 0
+            while count < len(self.frame_rectangle_create):
+                if self.coordinates_rectangle_x_init[count] < x < self.coordinates_rectangle_x_final[count] and \
+                        self.coordinates_rectangle_y_init[count] < y < self.coordinates_rectangle_y_final[count]:
+                    self.coordinates_rectangle_x_init[count] = 0
+                    self.coordinates_rectangle_x_final[count] = 0
+                    self.coordinates_rectangle_y_init[count] = 0
+                    self.coordinates_rectangle_y_final[count] = 0
+                    self.frame_rectangle_create[count] = 0
+
+                count = count + 1
 
         if self.elipseON == True:
             if self.num_of_click_elipse == 0:
@@ -1724,9 +2016,33 @@ class FUTOTAL:
 
             else:
                 num = int(arrayLenght(self.coordinates_elipse_x_final))
-                self.coordinates_elipse_x_final[num] = x
-                self.coordinates_elipse_y_final[num] = y
+
+                if x >= self.coordinates_elipse_x_init[num]:
+                    self.coordinates_elipse_x_final[num] = x
+                else:
+                    self.coordinates_elipse_x_final[num] = self.coordinates_elipse_x_init[num]
+                    self.coordinates_elipse_x_init[num] = x
+
+                if y >= self.coordinates_elipse_y_init[num]:
+                    self.coordinates_elipse_y_final[num] = y
+                else:
+                    self.coordinates_elipse_y_final[num] = self.coordinates_elipse_y_init[num]
+                    self.coordinates_elipse_y_init[num] = y
+
                 self.num_of_click_elipse = 0
+
+        if self.elipse_dropON == True:
+            count = 0
+            while count < len(self.frame_elipse_create):
+                if self.coordinates_elipse_x_init[count] < x < self.coordinates_elipse_x_final[count] and \
+                        self.coordinates_elipse_y_init[count] < y < self.coordinates_elipse_y_final[count]:
+                    del self.coordinates_elipse_x_init[count]
+                    del self.coordinates_elipse_x_final[count]
+                    del self.coordinates_elipse_y_init[count]
+                    del self.coordinates_elipse_y_final[count]
+                    del self.frame_elipse_create[count]
+
+                count = count + 1
 
         if self.textBoxON == True:
             self.num = int(arrayLenght(self.frame_textBox_create))
@@ -1740,6 +2056,17 @@ class FUTOTAL:
             self.e1 = tk.Entry(self.masterTextBox)
             self.e1.grid(row=1)
             tk.Button(self.masterTextBox, text='Confirm', command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=5)
+
+        if self.textBox_dropON == True:
+            count = 0
+            while count < len(self.frame_textBox_create):
+                if self.coordinates_textBox_x_init[count] < x < self.coordinates_textBox_x_init[count] + 40 and \
+                        self.coordinates_textBox_y_init[count] < y < self.coordinates_textBox_y_init[count] + 30:
+                    del self.coordinates_textBox_x_init[count]
+                    del self.coordinates_textBox_y_init[count]
+                    del self.frame_textBox_create[count]
+
+                count = count + 1
 
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
         self.show_frame()
@@ -1755,13 +2082,18 @@ class FUTOTAL:
             self.Icon.configure(bg="gray")
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.selectON = False
             self.start()
@@ -1772,13 +2104,18 @@ class FUTOTAL:
             self.Line.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.LineON = False
             self.start()
@@ -1789,13 +2126,18 @@ class FUTOTAL:
             self.Line_Drop.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.setaON = False
             self.LineON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.line_dropON = False
             self.start()
@@ -1806,15 +2148,41 @@ class FUTOTAL:
             self.Elipse.configure(bg="gray")
             self.selectON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
         else:
             self.LineON = False
+            self.start()
+
+    def elipse_dropONOFF(self):
+        if self.elipse_dropON == False:
+            self.elipse_dropON = True
+            self.quadrado_dropON = False
+            self.Elipse_Drop.configure(bg="gray")
+            self.quadradoON = False
+            self.selectON = False
+            self.elipseON = False
+            self.LineON = False
+            self.setaON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
+            self.pollyON = False
+            self.polly_dropON = False
+            self.textBoxON = False
+            self.textBox_dropON = False
+        else:
+            self.elipse_dropON = False
             self.start()
 
     def quadradoONOFF(self):
@@ -1823,15 +2191,42 @@ class FUTOTAL:
             self.Quadrado.configure(bg="gray")
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
+            self.quadrado_dropON = False
             self.LineON = False
             self.setaON = False
             self.line_dropON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.quadradoON = False
+            self.start()
+
+    def quadrado_dropONOFF(self):
+        if self.quadrado_dropON == False:
+            self.quadrado_dropON = True
+            self.Quadrado_Drop.configure(bg="gray")
+            self.quadradoON = False
+            self.selectON = False
+            self.elipseON = False
+            self.elipse_dropON = False
+            self.LineON = False
+            self.setaON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
+            self.pollyON = False
+            self.polly_dropON = False
+            self.textBoxON = False
+            self.textBox_dropON = False
+        else:
+            self.quadrado_dropON = False
             self.start()
 
     def setaONOFF(self):
@@ -1840,15 +2235,42 @@ class FUTOTAL:
             self.setaON = True
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
+            self.pollyON = False
+            self.polly_dropON = False
+            self.textBoxON = False
+            self.textBox_dropON = False
+        else:
+            self.setaON = False
+            self.start()
+
+    def seta_dropONOFF(self):
+        if self.seta_dropON == False:
+            self.Seta_Drop.configure(bg="gray")
+            self.seta_dropON = True
+            self.seta_passe_dropON = False
+            self.setaON = False
+            self.selectON = False
+            self.elipseON = False
+            self.elipse_dropON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.quadrado_dropON = False
             self.line_dropON = False
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
-            self.setaON = False
+            self.seta_dropON = False
             self.start()
 
     def seta_passeONOFF(self):
@@ -1857,15 +2279,42 @@ class FUTOTAL:
             self.seta_passeON = True
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.line_dropON = False
             self.setaON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.pollyON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.seta_passeON = False
+            self.start()
+
+    def seta_drop_passeONOFF(self):
+        if self.seta_passe_dropON == False:
+            self.seta_passe_dropON = True
+            self.Seta_Passe_Drop.configure(bg="gray")
+            self.seta_dropON = False
+            self.setaON = False
+            self.selectON = False
+            self.elipseON = False
+            self.elipse_dropON = False
+            self.LineON = False
+            self.quadradoON = False
+            self.quadrado_dropON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.pollyON = False
+            self.polly_dropON = False
+            self.textBoxON = False
+            self.textBox_dropON = False
+        else:
+            self.seta_passe_dropON = False
             self.start()
 
     def pollyONOFF(self):
@@ -1877,32 +2326,41 @@ class FUTOTAL:
             self.array_lists_polly_players_ONOFF.append(1)
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.line_dropON = False
             self.setaON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.seta_passeON = False
             self.polly_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
 
         else:
             self.pollyON = False
             self.start()
 
     def polly_dropONOFF(self):
-        self.polly_dropON = False
         if self.polly_dropON == False:
             self.Polly_Drop.configure(bg="gray")
             self.polly_dropON = True
             self.pollyON = False
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.line_dropON = False
             self.setaON = False
             self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.textBoxON = False
+            self.textBox_dropON = False
         else:
             self.polly_dropON = False
             self.start()
@@ -1913,15 +2371,42 @@ class FUTOTAL:
             self.TextBox.configure(bg="gray")
             self.selectON = False
             self.elipseON = False
+            self.elipse_dropON = False
             self.LineON = False
             self.quadradoON = False
+            self.quadrado_dropON = False
             self.setaON = False
+            self.line_dropON = False
+            self.seta_passeON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
+            self.pollyON = False
+            self.polly_dropON = False
+            self.textBox_dropON = False
+        else:
+            self.textBoxON = False
+            self.start()
+
+    def textBox_dropONOFF(self):
+        if self.textBox_dropON == False:
+            self.textBox_dropON = True
+            self.quadrado_dropON = False
+            self.TextBox_Drop.configure(bg="gray")
+            self.quadradoON = False
+            self.selectON = False
+            self.elipseON = False
+            self.elipse_dropON = False
+            self.LineON = False
+            self.setaON = False
+            self.seta_dropON = False
+            self.seta_passe_dropON = False
             self.line_dropON = False
             self.seta_passeON = False
             self.pollyON = False
             self.polly_dropON = False
-        else:
             self.textBoxON = False
+        else:
+            self.textBox_dropON = False
             self.start()
 
     def zoomin(self):
