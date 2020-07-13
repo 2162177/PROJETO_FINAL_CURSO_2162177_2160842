@@ -68,6 +68,7 @@ class FUTOTAL:
         self.master = master
         self.argv = argv
         self.pause = False
+
         self.output = None
         self.saveVideo_folder = None
 
@@ -310,6 +311,7 @@ class FUTOTAL:
         app.geometry("500x460")
         color = "#%02x%02x%02x" % (66, 162, 80)
 
+
         # app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
         app.iconbitmap(r'.\data\dp11.ico')
         m1 = tk.PanedWindow(app, orient=tk.VERTICAL)
@@ -331,7 +333,9 @@ class FUTOTAL:
         m6.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m6, text='Arrow of Pass:').pack(side=tk.LEFT)
         var = tk.DoubleVar(value=2)
+
         w1 = tk.Spinbox(m6, from_=0, to=1000, width=5, textvariable=var)
+
         w1.pack(side=tk.RIGHT)
 
         m8 = tk.PanedWindow(m4, orient=tk.VERTICAL)
@@ -379,6 +383,7 @@ class FUTOTAL:
         m15 = tk.PanedWindow(m13, orient=tk.VERTICAL, height=30)
         m13.add(m15)
         m15.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
         tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
 
         m16 = tk.PanedWindow(m13, orient=tk.VERTICAL)
@@ -444,7 +449,9 @@ class FUTOTAL:
         m20 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m20)
         m20.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
         tk.Label(m20, text='Text of Player:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+
         m24 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m24)
         m24.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -462,8 +469,10 @@ class FUTOTAL:
         tk.Label(m28, text='Type:').pack(side=tk.LEFT)
         var = tk.StringVar()
         var.set("Helvetica")
+
         data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
                 "MS Sans Serif", "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
+
         w = Combobox(m28, values=data)
         w.current(0)
         w.pack(side=tk.RIGHT)
@@ -499,6 +508,7 @@ class FUTOTAL:
         m26.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         tk.Label(m26, text='Text Box:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+
         m25 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m25)
         m25.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -518,6 +528,7 @@ class FUTOTAL:
         var.set("Helvetica")
         data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
                 "MS Sans Serif",
+
                 "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
         w = Combobox(m31, values=data)
         w.current(0)
@@ -567,8 +578,6 @@ class FUTOTAL:
         self.saveVideo_folder = filedialog.asksaveasfilename(filetypes=ftypes, defaultextension='.avi')
         src= self.output_name
         shutil.copy(src, self.saveVideo_folder)
-
-
 
     def createMenuLeft(self):
         m1 = tk.PanedWindow()
@@ -1134,7 +1143,9 @@ class FUTOTAL:
                 overlay_detect = frame.copy()
                 alpha_detect = 0.4
 
+
                 cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
+
                             360,
                             self.color_select, -1, 15)
 
@@ -1197,9 +1208,9 @@ class FUTOTAL:
                             print("Player nao encontrado")
 
                     else:
+
                         cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
-                                    (255, 255, 255),
-                                    1)
+                                    (255, 255, 255), 1)
 
             self.listbox.delete(0, tk.END)
 
@@ -1284,6 +1295,7 @@ class FUTOTAL:
                         self.coordinates_arrow_y_final[contador_setas]) == 0:
                     end_point = (int(self.coordinates_arrow_x_init[contador_setas]),
                                  int(self.coordinates_arrow_y_init[contador_setas]))
+
 
                 if self.arrow_type[contador_setas] == 1:
                     color = self.color_movement
@@ -1464,11 +1476,15 @@ class FUTOTAL:
         if self.numframes == 1:
             self.w_zoom = width
             self.h_zoom = height
+
+
         (rows, cols) = frame.shape[:2]
 
         if self.zoom == 150:
             if self.zona_de_zoom == "top_left":
+
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 10)]])
@@ -1480,7 +1496,9 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right":
+
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 10)]])
@@ -1492,7 +1510,9 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left":
+
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 10)]])
@@ -1505,6 +1525,7 @@ class FUTOTAL:
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 10)]])
@@ -1521,6 +1542,7 @@ class FUTOTAL:
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
                 M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_center":
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 5)]])
@@ -1605,6 +1627,7 @@ class FUTOTAL:
         # função : que deve ser chamada.
         # * args : outras opções.
 
+
     def change_zoom(self, event):
         self.stop()
         print("Coordenates")
@@ -1614,6 +1637,7 @@ class FUTOTAL:
             self.zoom = self.zoom + 50
             # warpAffine does appropriate shifting given the
             # translation matrix.
+
 
             if x < (self.w_zoom / 4) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_left"
