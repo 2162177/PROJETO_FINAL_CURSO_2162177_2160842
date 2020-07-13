@@ -10,6 +10,8 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
+from tkinter import filedialog
 from tkinter.ttk import Combobox
 from tkinter import ttk
 import cv2
@@ -28,15 +30,18 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from ToolTip import CreateToolTip
+import shutil
+
+
 
 flags.DEFINE_string('classes', './data/labels/playerball.names', 'path to classes file')
 flags.DEFINE_string('weights', './weights/yolov3-custom4.tf',
                     'path to weights file')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
-flags.DEFINE_string('logo', './data/initialLogo.jpg',
-                    'path to initial logo file')
-flags.DEFINE_string('output', 'output.avi', 'path to output video')
+flags.DEFINE_string('logo', './data/initialLogo.jpg','path to initial logo file')
+#flags.DEFINE_string('logo', './data/video/portugal10seg.mp4','path to initial logo file')
+flags.DEFINE_string('output', './data/video/saves/', 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_integer('num_classes', 2, 'number of classes in the model')
 # flags.DEFINE_string('output1', 'output', 'path to output directory to store snapshots')
@@ -63,7 +68,9 @@ class FUTOTAL:
         self.master = master
         self.argv = argv
         self.pause = False
-        self.zoom = 100
+        self.output = None
+        self.saveVideo_folder = None
+
         self.selectFrame = 0
         numframes = 0
         self.numframes = numframes
@@ -71,21 +78,24 @@ class FUTOTAL:
         self.isLogo = True
         self.times = []
 
-        # Variaveis das cores
-        self.color_line = (255, 125, 255)
-        self.color_rectangle = (0, 255, 255)
-        self.color_elipse = (0,150,250)
+        # Variaveis zoom
+        self.zoom = 100
+        self.zona_de_zoom = ""
+        self.w_zoom = 0
+        self.h_zoom = 0
 
+        # Variaveis das cores
+        self.color_line = (255, 255, 255)
+        self.color_rectangle = (0, 220, 220)
+        self.color_elipse = (0, 230, 230)
         self.color_passed = (255, 0, 0)
         self.color_movement = (0, 80, 255)
-
         self.color_polly = (0, 255, 0)
-        self.color_select = (255, 0, 255)
+        self.color_select = (0, 160, 0)
 
         # Variaveis dos nomes
         self.array_lists_id_with_names = []
         self.array_lists_names_of_player = []
-
 
         # Variaveis para selecionar jogador
         self.selectON = False
@@ -108,10 +118,14 @@ class FUTOTAL:
         self.line_player_2 = []
         self.line_active = []
 
-        #self.line_player1 = arr.array('i', [])
-        #self.line_player2 = arr.array('i', [])
-        #self.initArray(self.line_player1)
-        #self.initArray(self.line_player2)
+        # Variaveis screenshot
+        self.screenshot = False
+        self.screenshot_folder = ""
+
+        # self.line_player1 = arr.array('i', [])
+        # self.line_player2 = arr.array('i', [])
+        # self.initArray(self.line_player1)
+        # self.initArray(self.line_player2)
         self.players_selecionados = 0
         self.line_dropON = False
 
@@ -130,7 +144,6 @@ class FUTOTAL:
         self.initArray(self.coordinates_elipse_x_final)
         self.initArray(self.coordinates_elipse_y_final)
         self.num_of_click_elipse = 0
-
 
         # Variaveis para o quadrado
         self.quadradoON = False
@@ -223,19 +236,24 @@ class FUTOTAL:
         self.master.title("DeepSports Eleven - Sports Analysis Software")
         self.master.bind('<Escape>', lambda e: self.master.quit())
 
-        self.lmain = tk.Label(self.master, width=width_screen-400, height=height_screen-200)
+        self.lmain = tk.Label(self.master, width=width_screen - 400, height=height_screen - 200)
         self.lmain.pack()
 
-
-        #NUMBER OF FRAMES
-      
+        # NUMBER OF FRAMES
         property_id = int(cv2.CAP_PROP_FRAME_COUNT)
         self.length = int(cv2.VideoCapture.get(self.cap, property_id))
+
+
+        # Video time in ms
+        # property_time = int(cv2.CAP_PROP_POS_MSEC)
+        # self.video_time = int(cv2.VideoCapture.get(self.cap, property_time))
+
 
         self.createMenuBottom()
 
         self.show_frame()
-        self.master.tk.call('wm', 'iconphoto', self.master._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        # self.master.tk.call('wm', 'iconphoto', self.master._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        self.master.iconbitmap(r'.\data\dp11.ico')
 
     def donothing(self):
         filewin = tk.Toplevel(self.master)
@@ -256,24 +274,25 @@ class FUTOTAL:
         self.master.config(menu=self.menuBar)
         filemenu = tk.Menu(self.menuBar, tearoff=0)
         filemenu.add_command(label="Open", command=self.open_video)
-        filemenu.add_command(label="Save", command=self.donothing)
-        filemenu.add_command(label="Save as...", command=self.donothing)
-        filemenu.add_command(label="Close", command=self.donothing)
+        #filemenu.add_command(label="Save", command=self.saveVideo)
+        filemenu.add_command(label="Save as...", command=self.saveVideoAs)
+        filemenu.add_command(label="Settings", command=self.windowsSettings)
         filemenu.add_command(label="Exit", command=self.master.quit)
         self.menuBar.add_cascade(label="File", menu=filemenu)
 
         editmenu = tk.Menu(self.menuBar, tearoff=0)
-        editmenu.add_command(label="Screen shot", command=self.donothing)
+        editmenu.add_command(label="Screen shot", command=self.makeScreenshot)
 
         editmenu.add_separator()
 
-        editmenu.add_command(label="Cut", command=self.donothing)
-        editmenu.add_command(label="Copy", command=self.donothing)
-        editmenu.add_command(label="Paste", command=self.donothing)
-        editmenu.add_command(label="Delete", command=self.donothing)
-        editmenu.add_command(label="Select All", command=self.donothing)
-
+        editmenu.add_command(label="Draw arrow of movement", command=self.setaONOFF)
+        editmenu.add_command(label="Draw arrow of pass", command=self.seta_passeONOFF)
+        editmenu.add_command(label="Draw elipse", command=self.elipseONOFF)
+        editmenu.add_command(label="Draw rectangle", command=self.quadradoONOFF)
+        editmenu.add_command(label="Delete all forms", command=self.clean_arrays)
+        editmenu.add_command(label="Delete all lines", command=self.line_drop_all)
         self.menuBar.add_cascade(label="Edit", menu=editmenu)
+
         viewmenu = tk.Menu(self.menuBar, tearoff=0)
         viewmenu.add_command(label="Zoom out", command=self.zoomout)
         viewmenu.add_command(label="Zoom in", command=self.zoomin)
@@ -284,6 +303,272 @@ class FUTOTAL:
         helpmenu.add_command(label="About...", command=self.donothing)
         self.menuBar.add_cascade(label="Help", menu=helpmenu)
         self.master.config(menu=self.menuBar)
+
+    def windowsSettings(self):
+        app = tk.Tk()
+        app.title("Settings")
+        app.geometry("500x460")
+        color = "#%02x%02x%02x" % (66, 162, 80)
+
+        # app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        app.iconbitmap(r'.\data\dp11.ico')
+        m1 = tk.PanedWindow(app, orient=tk.VERTICAL)
+        m1.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
+        m1.add(m2)
+        m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m2, text='Duration in frames:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m3 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m1.add(m3)
+        m3.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        m4 = tk.PanedWindow(m3, orient=tk.VERTICAL)
+        m3.add(m4)
+        m4.pack(fill=tk.BOTH, expand=1, side=tk.LEFT)
+
+        m6 = tk.PanedWindow(m4, orient=tk.VERTICAL)
+        m4.add(m6)
+        m6.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m6, text='Arrow of Pass:').pack(side=tk.LEFT)
+        var = tk.DoubleVar(value=2)
+        w1 = tk.Spinbox(m6, from_=0, to=1000, width=5, textvariable=var)
+        w1.pack(side=tk.RIGHT)
+
+        m8 = tk.PanedWindow(m4, orient=tk.VERTICAL)
+        m4.add(m8)
+        m8.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m8, text='Arrow of Movement:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m8, from_=0, to=1000, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m9 = tk.PanedWindow(m4, orient=tk.VERTICAL)
+        m4.add(m9)
+        m9.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m9, text='Text Box:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m9, from_=0, to=1000, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m5 = tk.PanedWindow(m3, orient=tk.VERTICAL)
+        m3.add(m5)
+        m5.pack(fill=tk.BOTH, expand=1, side=tk.RIGHT)
+        m7 = tk.PanedWindow(m5, orient=tk.VERTICAL)
+        m5.add(m7)
+        m7.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m7, text='Rectangle:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m7, from_=0, to=1000, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m10 = tk.PanedWindow(m5, orient=tk.VERTICAL)
+        m5.add(m10)
+        m10.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m10, text='Elipse:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m10, from_=0, to=1000, width=5)
+        w.pack(side=tk.RIGHT)
+        m11 = tk.PanedWindow(m5, orient=tk.VERTICAL)
+        m5.add(m11)
+        m11.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        m12 = tk.PanedWindow(m1, orient=tk.VERTICAL)
+        m1.add(m12)
+        m12.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        m13 = tk.PanedWindow(m12, orient=tk.VERTICAL)
+        m12.add(m13)
+        m13.pack(fill=tk.BOTH, expand=1, side=tk.LEFT)
+
+        m15 = tk.PanedWindow(m13, orient=tk.VERTICAL, height=30)
+        m13.add(m15)
+        m15.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+
+        m16 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m16)
+        m16.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m16, text='Arrow of Pass:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m16, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m17 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m17)
+        m17.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m17, text='Arrow of Movement:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m17, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m18 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m18)
+        m18.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m18, text='Retangle:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m18, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m23 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m23)
+        m23.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m23, text='Text Box:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m23, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m19 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m19)
+        m19.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m19, text='Area between players:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m19, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m20 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m20)
+        m20.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m20, text='Line between players:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m20, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m21 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m21)
+        m21.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m21, text='Select player:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m21, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m22 = tk.PanedWindow(m13, orient=tk.VERTICAL)
+        m13.add(m22)
+        m22.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m22, text='Detect player:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m22, from_=0, to=100, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m14 = tk.PanedWindow(m12, orient=tk.VERTICAL)
+        m12.add(m14)
+        m14.pack(fill=tk.BOTH, expand=1, side=tk.RIGHT)
+
+        m20 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
+        m14.add(m20)
+        m20.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+        tk.Label(m20, text='Text of Player:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m24 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
+        m14.add(m24)
+        m24.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        m27 = tk.PanedWindow(m24, orient=tk.VERTICAL)
+        m24.add(m27)
+        m27.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m27, text='Font Size:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m27, from_=0, to=36, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m28 = tk.PanedWindow(m24, orient=tk.VERTICAL)
+        m24.add(m28)
+        m28.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m28, text='Type:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("Helvetica")
+        data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
+                "MS Sans Serif", "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
+        w = Combobox(m28, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        m29 = tk.PanedWindow(m24, orient=tk.VERTICAL)
+        m24.add(m29)
+        m29.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m29, text='Color:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("black")
+        data = (
+            "green", "red", "blue", "yellow", "gray",
+            "orange",
+            "black")
+        w = Combobox(m29, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        m30 = tk.PanedWindow(m24, orient=tk.VERTICAL)
+        m24.add(m30)
+        m30.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m30, text='Style:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("normal")
+        data = (
+            "normal", "bold", "italic")
+        w = Combobox(m30, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        m26 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
+        m14.add(m26)
+        m26.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        tk.Label(m26, text='Text Box:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+        m25 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
+        m14.add(m25)
+        m25.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        m31 = tk.PanedWindow(m25, orient=tk.VERTICAL)
+        m25.add(m31)
+        m31.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m31, text='Font Size:').pack(side=tk.LEFT)
+        w = tk.Spinbox(m31, from_=0, to=36, width=5)
+        w.pack(side=tk.RIGHT)
+
+        m31 = tk.PanedWindow(m25, orient=tk.VERTICAL)
+        m25.add(m31)
+        m31.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m31, text='Type:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("Helvetica")
+        data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
+                "MS Sans Serif",
+                "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
+        w = Combobox(m31, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        m32 = tk.PanedWindow(m25, orient=tk.VERTICAL)
+        m25.add(m32)
+        m32.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m32, text='Color:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("black")
+        data = (
+            "green", "red", "blue", "yellow", "gray",
+            "orange",
+            "black")
+        w = Combobox(m32, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        m33 = tk.PanedWindow(m25, orient=tk.VERTICAL)
+        m25.add(m33)
+        m33.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+        tk.Label(m33, text='Style:').pack(side=tk.LEFT)
+        var = tk.StringVar()
+        var.set("normal")
+        data = (
+            "normal", "bold", "italic")
+        w = Combobox(m33, values=data)
+        w.current(0)
+        w.pack(side=tk.RIGHT)
+
+        app.mainloop()
+
+    def makeScreenshot(self):
+        self.screenshot = True
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+        self.screenshot_folder = filedialog.askdirectory()
+        if self.screenshot_folder == "":
+            self.screenshot = False
+        else:
+            self.show_frame()
+            self.screenshot_folder = ""
+            self.screenshot = False
+
+    def saveVideoAs(self):
+        ftypes = [("*.avi", "*.avi"), ("*.mp4", "*.mp4"), ("*.wmv", "*.wmv")]
+        self.saveVideo_folder = filedialog.asksaveasfilename(filetypes=ftypes, defaultextension='.avi')
+        src= self.output_name
+        shutil.copy(src, self.saveVideo_folder)
+
+
 
     def createMenuLeft(self):
         m1 = tk.PanedWindow()
@@ -299,11 +584,6 @@ class FUTOTAL:
         m1.add(m2)
         m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-
-
-
-
-
         # Creating a photoimage object to use image
 
         self.elipse = tk.PhotoImage(file=r'./data/ellipse911.png')
@@ -318,8 +598,6 @@ class FUTOTAL:
         self.quadrado_drop = tk.PhotoImage(file=r'./data/quadrado.png')
         self.elipse_drop = tk.PhotoImage(file=r'./data/elipse.png')
 
-        
-
         # here, image option is used to
         # set image on button
         self.Icon = tk.Button(m20, text="SelectPlayer", image=self.icon, command=self.selectONOFF, compound="top")
@@ -331,10 +609,11 @@ class FUTOTAL:
         m2.add(m30)
         m30.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Line = tk.Button(m30, text="Draw Line\nBetween players", image=self.line, command=self.lineONOFF, compound="top")
+        self.Line = tk.Button(m30, text="Draw Line\nBetween players", image=self.line, command=self.lineONOFF,
+                              compound="top")
         self.Line.pack(fill=tk.BOTH, side=tk.LEFT)
         CreateToolTip(self.Line, text='Click on the player where the line will start.\n'
-                                     'Then click on the second player where the line will end.')
+                                      'Then click on the second player where the line will end.')
 
         self.Line_Drop = tk.Button(m30, text="Drop\nLine", image=self.rubber, command=self.line_dropONOFF,
                                    compound="top")
@@ -348,23 +627,25 @@ class FUTOTAL:
         self.Polly = tk.Button(m31, text="Draw Area\nBetween players", image=self.polly, command=self.pollyONOFF,
                                compound="top")
         self.Polly.pack(fill=tk.BOTH, side=tk.LEFT)
-        CreateToolTip(self.Polly, text='Draw area between players\nClick on the players that will be part of the polygon.')
+        CreateToolTip(self.Polly,
+                      text='Draw area between players\nClick on the players that will be part of the polygon.')
         self.Polly_Drop = tk.Button(m31, text="Drop\nArea", image=self.rubber,
-                                    command=self.polly_dropONOFF,compound="top")
+                                    command=self.polly_dropONOFF, compound="top")
         self.Polly_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
-        CreateToolTip(self.Polly_Drop, text='Remove area between playeres\nClick on the polygon player you want to remove.')
+        CreateToolTip(self.Polly_Drop,
+                      text='Remove area between playeres\nClick on the polygon player you want to remove.')
 
         m32 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m2.add(m32)
         m32.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.Seta = tk.Button(m32, text="Draw\nMovement", image=self.seta, command=self.setaONOFF, compound="top")
-        self.Seta.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Seta.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Seta, text='Click on the exact spot where the movement starts.\n'
-                                       'And then click on the place where it ends.')
+                                      'And then click on the place where it ends.')
 
         self.Seta_Drop = tk.Button(m32, text="Drop\nMove", image=self.rubber, command=self.seta_dropONOFF,
-                                        compound="top")
+                                   compound="top")
         self.Seta_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Seta_Drop, text='Click on the area that you want to drop')
 
@@ -372,13 +653,14 @@ class FUTOTAL:
         m2.add(m33)
         m33.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Seta_Passe = tk.Button(m33, text="Draw\nPass", image=self.seta_yellow, command=self.seta_passeONOFF,compound="top")
-        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Seta_Passe = tk.Button(m33, text="Draw\nPass", image=self.seta_yellow, command=self.seta_passeONOFF,
+                                    compound="top")
+        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Seta_Passe, text='Click on the exact spot where the pass starts.\n'
-                                             'And then click on the place where it ends.')
+                                            'And then click on the place where it ends.')
 
         self.Seta_Passe_Drop = tk.Button(m33, text="Drop\nPass", image=self.rubber, command=self.seta_drop_passeONOFF,
-                                    compound="top")
+                                         compound="top")
         self.Seta_Passe_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Seta_Passe_Drop, text='Click on the area that you want to drop')
 
@@ -386,12 +668,14 @@ class FUTOTAL:
         m2.add(m34)
         m34.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Quadrado = tk.Button(m34, text="Draw\nRectangle", image=self.quadrado, command=self.quadradoONOFF, compound="top")
-        self.Quadrado.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Quadrado = tk.Button(m34, text="Draw\nRectangle", image=self.quadrado, command=self.quadradoONOFF,
+                                  compound="top")
+        self.Quadrado.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Quadrado, text='Click on the exact place where the square starts.\n'
-                                           'And then click on the point where it ends.')
+                                          'And then click on the point where it ends.')
 
-        self.Quadrado_Drop = tk.Button(m34, text="Drop\n", image=self.rubber, command=self.quadrado_dropONOFF, compound="top")
+        self.Quadrado_Drop = tk.Button(m34, text="Drop\n", image=self.rubber, command=self.quadrado_dropONOFF,
+                                       compound="top")
         self.Quadrado_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Quadrado_Drop, text='Click on the area that you want to drop')
 
@@ -400,11 +684,12 @@ class FUTOTAL:
         m35.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.Elipse = tk.Button(m35, text="Draw\nEllipse", image=self.elipse, command=self.elipseONOFF, compound="top")
-        self.Elipse.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Elipse.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Elipse, text='Click on the exact place where the ellipse starts.\n'
-                                         'And then click on the point where it ends.')
+                                        'And then click on the point where it ends.')
 
-        self.Elipse_Drop = tk.Button(m35, text="Drop\n", image=self.rubber, command=self.elipse_dropONOFF, compound="top")
+        self.Elipse_Drop = tk.Button(m35, text="Drop\n", image=self.rubber, command=self.elipse_dropONOFF,
+                                     compound="top")
         self.Elipse_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Elipse_Drop, text='Click on the ellipse that you want to drop')
 
@@ -413,12 +698,12 @@ class FUTOTAL:
         m36.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.TextBox = tk.Button(m36, text="Textbox\n", image=self.textBox, command=self.textBoxONOFF, compound="top")
-        self.TextBox.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.TextBox.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.TextBox, text='Click on the exact spot where the textbox starts.\n'
-                                          'And then click on the exact spot where the textbox ends')
+                                         'And then click on the exact spot where the textbox ends')
 
         self.TextBox_Drop = tk.Button(m36, text="Drop\n", image=self.rubber, command=self.textBox_dropONOFF,
-                                       compound="top")
+                                      compound="top")
         self.TextBox_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.TextBox_Drop, text='Click on the area that you want to drop')
 
@@ -473,8 +758,9 @@ class FUTOTAL:
         var = tk.StringVar()
         var.set("Select player")
         data = (
-        "Select player", "Lines between players", "Polly between players", "Rectangle", "Elipse", "Arrow of Movement",
-        "Arrow of Passed")
+            "Select player", "Lines between players", "Polly between players", "Rectangle", "Elipse",
+            "Arrow of Movement",
+            "Arrow of Passed")
         self.cb = Combobox(m2, values=data)
         self.cb.current(0)
         self.cb.pack(fill=tk.BOTH, side=tk.TOP)
@@ -484,9 +770,6 @@ class FUTOTAL:
         m6.pack(fill=tk.BOTH, side=tk.TOP)
         self.frame1 = tk.Frame(m6)
         self.frame1.pack(fill=tk.BOTH, side=tk.LEFT)
-        m8 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
-        m8.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
-        tk.Label(m8, text='Custom color:').pack(side=tk.LEFT)
         m9 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m9.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
         blue = tk.Button(m9, bg='blue', command=self.blue)
@@ -509,18 +792,21 @@ class FUTOTAL:
         white.pack(fill=tk.BOTH, side=tk.RIGHT, expand=1)
         m15 = tk.PanedWindow(self.frame1, orient=tk.HORIZONTAL, height=10)
         m15.pack(fill=tk.BOTH, side=tk.TOP)
+        m8 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
+        m8.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
+        tk.Label(m8, text='Custom color:').pack(side=tk.LEFT)
         m11 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m11.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
         self.color = tk.PanedWindow(m11, orient=tk.HORIZONTAL, bg='white', height=30)
         self.color.pack(fill=tk.BOTH, side=tk.RIGHT, expand=1)
         m3 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m3.pack(fill=tk.BOTH, side=tk.TOP, expand=1)
-        tk.Label(m3, text='Green:').pack(side=tk.LEFT)
+        tk.Label(m3, text='Red:').pack(side=tk.LEFT)
         self.vermelho = tk.Scale(m3, from_=0, to=255, orient=tk.HORIZONTAL, command=self.misturar)
         self.vermelho.pack(side=tk.RIGHT)
         m4 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
         m4.pack(fill=tk.BOTH, side=tk.TOP)
-        tk.Label(m4, text='Red:').pack(side=tk.LEFT)
+        tk.Label(m4, text='Green:').pack(side=tk.LEFT)
         self.verde = tk.Scale(m4, from_=0, to=255, orient=tk.HORIZONTAL, command=self.misturar)
         self.verde.pack(side=tk.RIGHT)
         m5 = tk.PanedWindow(self.frame1, orient=tk.VERTICAL)
@@ -683,10 +969,9 @@ class FUTOTAL:
                                int(self.vermelho.get()))
         if self.cb.get() == "Arrow of Movement":
             self.color_movement = (int(self.azul.get()),
-                                 int(self.verde.get()),
-                                 int(self.vermelho.get()))
+                                   int(self.verde.get()),
+                                   int(self.vermelho.get()))
         if self.cb.get() == "Arrow of Passes":
-
             self.color_passed = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
@@ -700,10 +985,9 @@ class FUTOTAL:
                                 int(self.vermelho.get()))
         if self.cb.get() == "Rectangle":
             self.color_rectangle = (int(self.azul.get()),
-                                 int(self.verde.get()),
-                                 int(self.vermelho.get()))
+                                    int(self.verde.get()),
+                                    int(self.vermelho.get()))
         if self.cb.get() == "Ellipse":
-
             self.color_elipse = (int(self.azul.get()),
                                  int(self.verde.get()),
                                  int(self.vermelho.get()))
@@ -723,7 +1007,8 @@ class FUTOTAL:
         m1.add(m2)
 
         var = tk.StringVar()
-        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0, height=2, font= cv2.FONT_HERSHEY_DUPLEX)
+        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0, height=2,
+                               font=cv2.FONT_HERSHEY_DUPLEX)
         if (self.isLogo == False):
             var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
         else:
@@ -777,21 +1062,13 @@ class FUTOTAL:
         global running
         _, frame = self.cap.read()
         # frame = cv2.flip(frame, 0)
+
+
         if self.pause == False:
             self.numframes = self.numframes + 1
-        print(self.numframes)
-
-        frame = imutils.resize(frame, width=width_screen-400)
 
 
-        print(self.pause)
-
-        # cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # Image.fromarray( obj , mode = None )
-        # obj - Objeto com interface de matriz
-        # mode - Modo a ser usado (será determinado a partir do tipo se None) Consulte:
-        # img1=img
-        # img1 = imutils.resize(img1, width=900)
+        frame = imutils.resize(frame, width=width_screen - 400)
 
         img1 = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -856,36 +1133,35 @@ class FUTOTAL:
 
                 overlay_detect = frame.copy()
                 alpha_detect = 0.4
-                
-                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                             360,
                             self.color_select, -1, 15)
 
                 print(self.color_select)
                 red, green, blue = str(self.color_select).split(',')
                 red = str(red)[1:]
-                blue = str(blue)[:len(blue)-1]
+                blue = str(blue)[:len(blue) - 1]
 
-                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                             360,
-                            (int(red)-100, int(green)-100, int(blue)-100), 2, 15)
+                            (int(red) - 100, int(green) - 100, int(blue) - 100), 2, 15)
                 frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
 
             else:
                 # cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 0, 255) , 2)
                 # cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                 #              (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])),  (0, 0, 255), -1)
-                if self.pause == True:
+                if self.pause == True and self.screenshot == False:
                     overlay_detect = frame.copy()
                     alpha_detect = 0.4
-                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                                 360,
                                 (200, 200, 200), -1, 15)
-                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                                 360,
                                 (100, 100, 100), 2, 15)
                     frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
-
 
             if self.pause == False:
                 if self.array_lists_id_with_names.count(track.track_id) > 0:
@@ -906,22 +1182,24 @@ class FUTOTAL:
                                 1)
 
             else:
-                if self.array_lists_id_with_names.count(track.track_id) > 0:
-                    count = 0
-                    while self.array_lists_id_with_names[count] != track.track_id:
-                        count = count + 1
-                    cv2.putText(frame, str(track.track_id) + " - " + str(self.array_lists_names_of_player[count]),
-                                (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
-                                (255, 255, 255), 1)
-                    try:
-                        id = self.list.index(str(track.track_id) + " - Player", 0, len(self.list))
-                        self.list[id] = str(track.track_id) + " - " + str(self.array_lists_names_of_player[count])
-                    except:
-                        print("Player nao encontrado")
+                if self.screenshot == False:
+                    if self.array_lists_id_with_names.count(track.track_id) > 0:
+                        count = 0
+                        while self.array_lists_id_with_names[count] != track.track_id:
+                            count = count + 1
+                        cv2.putText(frame, str(track.track_id) + " - " + str(self.array_lists_names_of_player[count]),
+                                    (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
+                                    (255, 255, 255), 1)
+                        try:
+                            id = self.list.index(str(track.track_id) + " - Player", 0, len(self.list))
+                            self.list[id] = str(track.track_id) + " - " + str(self.array_lists_names_of_player[count])
+                        except:
+                            print("Player nao encontrado")
 
-                else:
-                    cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75, (255, 255, 255),
-                                1)
+                    else:
+                        cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
+                                    (255, 255, 255),
+                                    1)
 
             self.listbox.delete(0, tk.END)
 
@@ -969,7 +1247,7 @@ class FUTOTAL:
                 if self.line_active[cont_line_player1_id] > 0:
                     if self.line_player_1[cont_line_player1_id] == self.line_player_2[cont_line_player2_id]:
                         x_new_player1 = self.objects_positions_x_min[player1] + (
-                                    (self.objects_positions_x_max[player1] - self.objects_positions_x_min[player1]) / 2)
+                                (self.objects_positions_x_max[player1] - self.objects_positions_x_min[player1]) / 2)
                         x_new_player2 = self.objects_positions_x_min[player2] + (
                                 (self.objects_positions_x_max[player2] - self.objects_positions_x_min[player2]) / 2)
 
@@ -981,8 +1259,13 @@ class FUTOTAL:
                         x_new_player2 = self.objects_positions_x_min[player2] + (
                                 (self.objects_positions_x_max[player2] - self.objects_positions_x_min[player2]) / 2)
 
-                        cv2.line(frame, (int(x_new_player1), self.objects_positions_y_max[player1]),
+                        overlay_line = frame.copy()
+                        alpha_line = 0.6
+                        cv2.line(overlay_line, (int(x_new_player1), self.objects_positions_y_max[player1]),
                                  (int(x_new_player2), self.objects_positions_y_max[player2]), self.color_line, 5)
+
+                        frame = cv2.addWeighted(overlay_line, alpha_line, frame, 1 - alpha_line, 0)
+
                 cont_line_player1_id = cont_line_player1_id + 1
                 cont_line_player2_id = cont_line_player2_id + 1
 
@@ -991,7 +1274,8 @@ class FUTOTAL:
             contador_setas = 0
             while contador_setas < arrayLenght(self.frame_arrow_create):
                 start_point = (
-                int(self.coordinates_arrow_x_init[contador_setas]), int(self.coordinates_arrow_y_init[contador_setas]))
+                    int(self.coordinates_arrow_x_init[contador_setas]),
+                    int(self.coordinates_arrow_y_init[contador_setas]))
 
                 end_point = (int(self.coordinates_arrow_x_final[contador_setas]),
                              int(self.coordinates_arrow_y_final[contador_setas]))
@@ -1005,7 +1289,7 @@ class FUTOTAL:
                     color = self.color_movement
                     thickness = 4
                     tipLength = 0.1
-                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 40:
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 100:
                         overlay_arrow = frame.copy()
                         alpha_arrow = 0.4
                         cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
@@ -1015,14 +1299,15 @@ class FUTOTAL:
                     color = self.color_passed
                     thickness = 5
                     tipLength = 0.1
-                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 40:
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 100:
                         overlay_arrow = frame.copy()
                         alpha_arrow = 0.6
                         cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
                         frame = cv2.addWeighted(overlay_arrow, alpha_arrow, frame, 1 - alpha_arrow, 0)
 
-
                 contador_setas = contador_setas + 1
+
+
 
         # criacao de elipses
         if self.frame_elipse_create[0] != 0:
@@ -1033,7 +1318,6 @@ class FUTOTAL:
 
                 end_point = (int(self.coordinates_elipse_x_final[contador_elipse]),
                              int(self.coordinates_elipse_y_final[contador_elipse]))
-
 
                 if int(self.coordinates_elipse_x_final[contador_elipse]) == 0 and int(
                         self.coordinates_elipse_y_final[contador_elipse]) == 0:
@@ -1050,8 +1334,8 @@ class FUTOTAL:
                     elipse_height = int(((start_point[0] - end_point[0]) / 2) + 1)
 
                 if start_point[1] < end_point[1]:
-                    center_y=int(start_point[1] + ((end_point[1]-start_point[1])/2))
-                    elipse_widht=int(((end_point[1]-start_point[1])/2)+1)
+                    center_y = int(start_point[1] + ((end_point[1] - start_point[1]) / 2))
+                    elipse_widht = int(((end_point[1] - start_point[1]) / 2) + 1)
                 else:
                     center_y = int(end_point[1] + ((start_point[1] - end_point[1]) / 2))
                     elipse_widht = int(((start_point[1] - end_point[1]) / 2) + 1)
@@ -1066,8 +1350,7 @@ class FUTOTAL:
 
                 contador_elipse = contador_elipse + 1
 
-
-        #criacao de quadrados/ retangulos
+        # criacao de quadrados/ retangulos
         if self.frame_rectangle_create[0] != 0:
             contador_rectangulos = 0
             while contador_rectangulos < arrayLenght(self.frame_rectangle_create):
@@ -1084,7 +1367,6 @@ class FUTOTAL:
 
                 color = self.color_rectangle
 
-
                 thickness = -1
 
                 if int(self.numframes) - int(self.frame_rectangle_create[contador_rectangulos]) < 50:
@@ -1092,7 +1374,7 @@ class FUTOTAL:
                     alpha_detect = 0.4
                     cv2.rectangle(overlay_detect, start_point, end_point, color, thickness)
                     frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
-                    
+
                 contador_rectangulos = contador_rectangulos + 1
 
             # if FLAGS.output:
@@ -1138,7 +1420,6 @@ class FUTOTAL:
                         cv2.fillConvexPoly(overlay_poly, nppts, self.color_polly)
                         frame = cv2.addWeighted(overlay_poly, alpha_poly, frame, 1 - alpha_poly, 0)
 
-
                     contador_polly = contador_polly + 1
 
         # out.write(img)
@@ -1151,17 +1432,16 @@ class FUTOTAL:
                                int(self.coordinates_textBox_y_init[contador_textBox]))
 
                 color = (0, 0, 0)
-                # textInput = "Passe errado do Sergio Ramos"
-                # textInput = input("Text to add.\n")
 
-                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 25:
+
+                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 50:
                     overlay_textBox = frame.copy()
                     alpha_textBox = 0.3
                     try:
                         cv2.rectangle(overlay_textBox, (int(self.coordinates_textBox_x_init[contador_textBox] - 5),
                                                         int(self.coordinates_textBox_y_init[contador_textBox] - 30)),
                                       (int(self.coordinates_textBox_x_init[contador_textBox]) + (
-                                                  (len(self.coordinates_textBox_text[contador_textBox])) * 13) + 5,
+                                              (len(self.coordinates_textBox_text[contador_textBox])) * 13) + 5,
                                        int(self.coordinates_textBox_y_init[contador_textBox] + 20)),
                                       (255, 255, 255), -1)
                         frame = cv2.addWeighted(overlay_textBox, alpha_textBox, frame, 1 - alpha_textBox, 0)
@@ -1172,14 +1452,125 @@ class FUTOTAL:
 
                 contador_textBox = contador_textBox + 1
 
-        # Zoom aplicado, o self.zoom irá decidir a escala aplicada no video
+        if self.cap.get(cv2.CAP_PROP_FRAME_COUNT) > 1 and self.pause== False:
+            frame = cv2.resize(frame, (self.original_width, self.original_height))
+            self.output.write(frame)
+            frame = imutils.resize(frame, width=width_screen - 400)
+
+
         scale_percent = self.zoom  # percent of original size
         width = int(frame.shape[1] * scale_percent / 100)
         height = int(frame.shape[0] * scale_percent / 100)
+        if self.numframes == 1:
+            self.w_zoom = width
+            self.h_zoom = height
+        (rows, cols) = frame.shape[:2]
+
+        if self.zoom == 150:
+            if self.zona_de_zoom == "top_left":
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_medium":
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_center":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_center_medium":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right":
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_medium":
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_center":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_center_medium":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left":
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_medium":
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_center":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_center_medium":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right":
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_medium":
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_center":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_center_medium":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 10)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+        if self.zoom == 200:
+            if self.zona_de_zoom == "top_left":
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_medium":
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_center":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_left_center_medium":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right":
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_medium":
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_center":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "top_right_center_medium":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left":
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_medium":
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_center":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_left_center_medium":
+                M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right":
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_medium":
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_center":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 5)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+            if self.zona_de_zoom == "bottom_right_center_medium":
+                M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 7)]])
+                frame = cv2.warpAffine(frame, M, (cols, rows))
+
         dim = (width, height)
 
         # resize image
         img = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+        if self.screenshot == True:
+            cv2.imwrite(self.screenshot_folder + "\\frame%d.jpg" % self.numframes, img)
 
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)  # Cria uma memória de imagem de um objeto que exporta a interface da matriz
@@ -1191,16 +1582,21 @@ class FUTOTAL:
         t2 = time.time()
         self.times.append(t2 - t1)
         self.times = self.times[-20:]
-        print("fps: {:.2f}".format(round(1/((sum(self.times)/len(self.times))), 2)))
+        print("fps: {:.2f}".format(round(1 / ((sum(self.times) / len(self.times))), 2)))
 
-        #key = cv2.waitKey(1)
-
+        # key = cv2.waitKey(1)
+        self.lmain.bind('<MouseWheel>', self.change_zoom)
         self.lmain.bind('<Leave>', self.exit_)
         self.lmain.bind('<Button-1>',
                         self.motion)  # quando alguem clica na tela de jogo o irá imediatamente assionar a funcao self.motion
 
+
         if not self.pause:
-            self.lmain.after(5, self.show_frame)
+            if self.cap.get(cv2.CAP_PROP_POS_FRAMES) < self.cap.get(cv2.CAP_PROP_FRAME_COUNT):
+                self.lmain.after(5, self.show_frame)
+
+
+
 
         # after (pai, ms, função = Nenhum, * args)
         # Parâmetros:
@@ -1208,6 +1604,62 @@ class FUTOTAL:
         # ms : é o tempo em milissegundos.
         # função : que deve ser chamada.
         # * args : outras opções.
+
+    def change_zoom(self, event):
+        self.stop()
+        print("Coordenates")
+        x = event.x
+        y = event.y
+        if int(event.delta) > 0 and (self.zoom + 50) < 250:
+            self.zoom = self.zoom + 50
+            # warpAffine does appropriate shifting given the
+            # translation matrix.
+
+            if x < (self.w_zoom / 4) and y < (self.h_zoom / 4):
+                self.zona_de_zoom = "top_left"
+            elif x < (self.w_zoom / 4) and y < (self.h_zoom / 2):
+                self.zona_de_zoom = "top_left_medium"
+            elif x < (self.w_zoom / 2) and y < (self.h_zoom / 4):
+                self.zona_de_zoom = "top_left_center"
+            elif x > (self.w_zoom / 4) and x < (self.w_zoom / 2) and y > (self.h_zoom / 4) and y < (self.h_zoom / 2):
+                self.zona_de_zoom = "top_left_center_medium"
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 4):
+                self.zona_de_zoom = "top_right"
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 2):
+                self.zona_de_zoom = "top_right_medium"
+            elif x > (self.w_zoom / 2) and y < (self.h_zoom / 4):
+                self.zona_de_zoom = "top_right_center"
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 4) and y < (
+                    self.h_zoom / 2):
+                self.zona_de_zoom = "top_right_center_medium"
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_left"
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom / 2):
+                self.zona_de_zoom = "bottom_left_medium"
+            elif x < (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_left_center"
+            elif x < (self.w_zoom / 2) and x > (self.w_zoom / 4) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_left_center_medium"
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_right"
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2):
+                self.zona_de_zoom = "bottom_right_medium"
+            elif x > (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_right_center"
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
+                self.zona_de_zoom = "bottom_right_center_medium"
+
+            else:
+                self.zona_de_zoom = "center"
+
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+            self.show_frame()
+        if int(event.delta) < 0 and (self.zoom - 50) > 50:
+            self.zoom = self.zoom - 50
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+            self.show_frame()
 
     # vamos criar um array que retorna a posicao atraves do id do jogador
     def get_id_player(self, number):
@@ -1235,8 +1687,9 @@ class FUTOTAL:
     def motion(self, event):
         min_x = 0
         min_y = 0
-        x, y = event.x, event.y  # x e y sao igualados ao x clicado no evento e ao y clicado no evento
+        x, y = event.x, event.y - 15  # x e y sao igualados ao x clicado no evento e ao y clicado no evento
         print('{}, {}'.format(x, y))
+        self.pause = True
 
         def arrayLenght(array):
             cont = len(array) - 1
@@ -1296,7 +1749,6 @@ class FUTOTAL:
                             count = count + 1
                         # remover jogador no array player1 e companheiro e companheiro do player1
 
-
                         # organizar array self.line_player1
 
                         # contador = 0
@@ -1313,7 +1765,6 @@ class FUTOTAL:
                                 self.line_active[count] = 0
                             count = count + 1
                         # remover jogador no array player2 e companheiro do player1
-
 
                         # organizar array self.line_player2
                         # contador = 0
@@ -1356,24 +1807,40 @@ class FUTOTAL:
                 self.num_of_click_arrow = self.num_of_click_arrow + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_arrow_x_final))
+                num = int(arrayLenght(self.frame_arrow_create)-1)
                 self.coordinates_arrow_x_final[num] = x
                 self.coordinates_arrow_y_final[num] = y
                 self.num_of_click_arrow = 0
 
-        if self.seta_dropON == True or self.seta_passe_dropON == True:
+        if self.seta_dropON == True:
             count = 0
             while count < len(self.frame_arrow_create):
-                if self.coordinates_arrow_x_init[count] < x < self.coordinates_arrow_x_final[count] and\
-                        self.coordinates_arrow_y_init[count] < x < self.coordinates_arrow_y_final[count]:
-                    self.coordinates_arrow_x_init[count] = 0
-                    self.coordinates_arrow_x_final[count] = 0
-                    self.coordinates_arrow_y_init[count] = 0
-                    self.coordinates_arrow_y_final[count] = 0
-                    self.frame_arrow_create[count] = 0
+                if self.arrow_type[count] == 1:
+                    if self.coordinates_arrow_x_init[count] <= x <= self.coordinates_arrow_x_final[count] or \
+                            self.coordinates_arrow_x_final[count] <= x <= self.coordinates_arrow_x_init[count]:
+                        if self.coordinates_arrow_y_init[count] <= y <= self.coordinates_arrow_y_final[count] or \
+                                self.coordinates_arrow_y_final[count] <= y <= self.coordinates_arrow_y_init[count]:
+                            self.coordinates_arrow_x_init[count] = 0
+                            self.coordinates_arrow_x_final[count] = 0
+                            self.coordinates_arrow_y_init[count] = 0
+                            self.coordinates_arrow_y_final[count] = 0
 
                 count = count + 1
 
+        if self.seta_passe_dropON == True:
+            count = 0
+            while count < len(self.frame_arrow_create):
+                if self.arrow_type[count] == 2:
+                    if self.coordinates_arrow_x_init[count] <= x <= self.coordinates_arrow_x_final[count] or \
+                            self.coordinates_arrow_x_final[count] <= x <= self.coordinates_arrow_x_init[count]:
+                        if self.coordinates_arrow_y_init[count] <= y <= self.coordinates_arrow_y_final[count] or \
+                                self.coordinates_arrow_y_final[count] <= y <= self.coordinates_arrow_y_init[count]:
+                            self.coordinates_arrow_x_init[count] = 0
+                            self.coordinates_arrow_x_final[count] = 0
+                            self.coordinates_arrow_y_init[count] = 0
+                            self.coordinates_arrow_y_final[count] = 0
+
+                count = count + 1
 
         if self.quadradoON == True:
             if self.num_of_click_rectangle == 0:
@@ -1384,7 +1851,7 @@ class FUTOTAL:
                 self.num_of_click_rectangle = self.num_of_click_rectangle + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_rectangle_x_final))
+                num = int(arrayLenght(self.frame_rectangle_create)-1)
 
                 if x >= self.coordinates_rectangle_x_init[num]:
                     self.coordinates_rectangle_x_final[num] = x
@@ -1400,7 +1867,6 @@ class FUTOTAL:
 
                 self.num_of_click_rectangle = 0
 
-
         if self.quadrado_dropON == True:
             count = 0
             while count < len(self.frame_rectangle_create):
@@ -1410,11 +1876,8 @@ class FUTOTAL:
                     self.coordinates_rectangle_x_final[count] = 0
                     self.coordinates_rectangle_y_init[count] = 0
                     self.coordinates_rectangle_y_final[count] = 0
-                    self.frame_rectangle_create[count] = 0
-
 
                 count = count + 1
-
 
         if self.elipseON == True:
             if self.num_of_click_elipse == 0:
@@ -1422,11 +1885,10 @@ class FUTOTAL:
                 self.frame_elipse_create[num] = self.numframes
                 self.coordinates_elipse_x_init[num] = x
                 self.coordinates_elipse_y_init[num] = y
-                self.num_of_click_elipse= self.num_of_click_elipse + 1
+                self.num_of_click_elipse = self.num_of_click_elipse + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_elipse_x_final))
-
+                num = int(arrayLenght(self.frame_elipse_create)-1)
 
                 if x >= self.coordinates_elipse_x_init[num]:
                     self.coordinates_elipse_x_final[num] = x
@@ -1447,16 +1909,12 @@ class FUTOTAL:
             while count < len(self.frame_elipse_create):
                 if self.coordinates_elipse_x_init[count] < x < self.coordinates_elipse_x_final[count] and \
                         self.coordinates_elipse_y_init[count] < y < self.coordinates_elipse_y_final[count]:
-
-                    del self.coordinates_elipse_x_init[count]
-                    del self.coordinates_elipse_x_final[count]
-                    del self.coordinates_elipse_y_init[count]
-                    del self.coordinates_elipse_y_final[count]
-                    del self.frame_elipse_create[count]
+                    self.coordinates_elipse_x_init[count] = 0
+                    self.coordinates_elipse_x_final[count] = 0
+                    self.coordinates_elipse_y_init[count] = 0
+                    self.coordinates_elipse_y_final[count] = 0
 
                 count = count + 1
-
-
 
         if self.textBoxON == True:
             self.num = int(arrayLenght(self.frame_textBox_create))
@@ -1469,23 +1927,26 @@ class FUTOTAL:
             tk.Label(self.masterTextBox, text="Text to add:").grid(row=0)
             self.e1 = tk.Entry(self.masterTextBox)
             self.e1.grid(row=1)
-            tk.Button(self.masterTextBox, text='Confirm',command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=5)
-
+            tk.Button(self.masterTextBox, text='Confirm', command=self.saveTextBox).grid(row=3, sticky=tk.W, pady=5)
 
         if self.textBox_dropON == True:
             count = 0
-            while count < len(self.frame_textBox_create):
-                if self.coordinates_textBox_x_init[count] < x < self.coordinates_textBox_x_init[count]+40 and \
-                        self.coordinates_textBox_y_init[count] < y < self.coordinates_textBox_y_init[count]+30:
+            try:
+                while count < len(self.frame_textBox_create):
+                    if self.coordinates_textBox_x_init[count] < x < self.coordinates_textBox_x_init[count] + 150 and \
+                            self.coordinates_textBox_y_init[count] - 30 < y < self.coordinates_textBox_y_init[count] + 20:
+                        del self.coordinates_textBox_x_init[count]
+                        del self.coordinates_textBox_y_init[count]
+                        del self.coordinates_textBox_text[count]
+                        del self.frame_arrow_create[count]
 
-                    del self.coordinates_textBox_x_init[count]
-                    del self.coordinates_textBox_y_init[count]
-                    del self.frame_textBox_create[count]
+                    count = count + 1
+            except:
+                print("No textBox exists")
 
 
-                count = count + 1
-
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+        if self.cap.get(cv2.CAP_PROP_POS_FRAMES) > 1:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
         self.show_frame()
 
     def saveTextBox(self):
@@ -1840,7 +2301,7 @@ class FUTOTAL:
         self.stop()
 
     def exit_(self, event):
-        #self.master.bind('<Enter>', self.enter)
+        # self.master.bind('<Enter>', self.enter)
         self.stop()
 
     def start(self):
@@ -1850,8 +2311,9 @@ class FUTOTAL:
 
     def stop(self):
         self.pause = True
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
-        self.show_frame()
+        if self.cap.get(cv2.CAP_PROP_POS_FRAMES) < self.cap.get(cv2.CAP_PROP_FRAME_COUNT):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+            self.show_frame()
 
     def open_video(self):
         self.filename = askopenfilename(title="Select file", filetypes=(("*.mp4", "*.mp4"),
@@ -1868,6 +2330,19 @@ class FUTOTAL:
             self.isLogo = False
             self.numframes = 0
 
+            self.original_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.original_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            # FPS of original video
+            property_fps = int(cv2.CAP_PROP_FPS)
+            self.orignal_fps = int(cv2.VideoCapture.get(self.cap, property_fps))
+
+            codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
+
+            self.output_name = FLAGS.output+"output.avi"
+            self.output = cv2.VideoWriter(self.output_name, codec, 15,
+                                          (self.original_width, self.original_height))
+
             self.clean_arrays()
 
         self.show_frame()
@@ -1882,7 +2357,7 @@ class FUTOTAL:
         self.start()
 
     def selectFrameScale(self, v):
-        print("572: clicar no scale no")
+        print("Clicar no scale no")
         print(v)
         if (int(v) - self.numframes) > 20:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, int(v))
@@ -1952,13 +2427,13 @@ class FUTOTAL:
 
 def main(_argv):
     root = tk.Tk()
-    #root.title("DeepSports Eleven - Sports Analysis Software")
-    #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
-    #var=str(width_screen-200) +"x"+ str(height_screen)
-    #root.geometry(var)
-    app = FUTOTAL(root,_argv)
-    #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
-    #show_frame(FLAGS, yolo, class_names, cap, root, lmain, out)
+    # root.title("DeepSports Eleven - Sports Analysis Software")
+    # root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+    # var=str(width_screen-200) +"x"+ str(height_screen)
+    # root.geometry(var)
+    app = FUTOTAL(root, _argv)
+    # root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+    # show_frame(FLAGS, yolo, class_names, cap, root, lmain, out)
 
     root.mainloop()
 
