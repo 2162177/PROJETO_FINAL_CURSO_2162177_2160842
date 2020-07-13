@@ -10,6 +10,7 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
 from tkinter import filedialog
 from tkinter.ttk import Combobox
 from tkinter import ttk
@@ -29,15 +30,18 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 from ToolTip import CreateToolTip
+import shutil
+
+
 
 flags.DEFINE_string('classes', './data/labels/playerball.names', 'path to classes file')
 flags.DEFINE_string('weights', './weights/yolov3-custom4.tf',
                     'path to weights file')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
-flags.DEFINE_string('logo', './data/initialLogo.jpg',
-                    'path to initial logo file')
-flags.DEFINE_string('output', 'output.avi', 'path to output video')
+flags.DEFINE_string('logo', './data/initialLogo.jpg','path to initial logo file')
+#flags.DEFINE_string('logo', './data/video/portugal10seg.mp4','path to initial logo file')
+flags.DEFINE_string('output', './data/video/saves/', 'path to output video')
 flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_integer('num_classes', 2, 'number of classes in the model')
 # flags.DEFINE_string('output1', 'output', 'path to output directory to store snapshots')
@@ -65,6 +69,9 @@ class FUTOTAL:
         self.argv = argv
         self.pause = False
 
+        self.output = None
+        self.saveVideo_folder = None
+
         self.selectFrame = 0
         numframes = 0
         self.numframes = numframes
@@ -79,13 +86,13 @@ class FUTOTAL:
         self.h_zoom = 0
 
         # Variaveis das cores
-        self.color_line = (255, 125, 255)
-        self.color_rectangle = (0, 255, 255)
-        self.color_elipse = (0,150,250)
+        self.color_line = (255, 255, 255)
+        self.color_rectangle = (0, 220, 220)
+        self.color_elipse = (0, 230, 230)
         self.color_passed = (255, 0, 0)
         self.color_movement = (0, 80, 255)
         self.color_polly = (0, 255, 0)
-        self.color_select = (255, 0, 255)
+        self.color_select = (0, 160, 0)
 
         # Variaveis dos nomes
         self.array_lists_id_with_names = []
@@ -234,14 +241,20 @@ class FUTOTAL:
         self.lmain.pack()
 
         # NUMBER OF FRAMES
-
         property_id = int(cv2.CAP_PROP_FRAME_COUNT)
         self.length = int(cv2.VideoCapture.get(self.cap, property_id))
+
+
+        # Video time in ms
+        # property_time = int(cv2.CAP_PROP_POS_MSEC)
+        # self.video_time = int(cv2.VideoCapture.get(self.cap, property_time))
+
 
         self.createMenuBottom()
 
         self.show_frame()
-        self.master.tk.call('wm', 'iconphoto', self.master._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        # self.master.tk.call('wm', 'iconphoto', self.master._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+        self.master.iconbitmap(r'.\data\dp11.ico')
 
     def donothing(self):
         filewin = tk.Toplevel(self.master)
@@ -262,8 +275,8 @@ class FUTOTAL:
         self.master.config(menu=self.menuBar)
         filemenu = tk.Menu(self.menuBar, tearoff=0)
         filemenu.add_command(label="Open", command=self.open_video)
-        filemenu.add_command(label="Save", command=self.donothing)
-        filemenu.add_command(label="Save as...", command=self.donothing)
+        #filemenu.add_command(label="Save", command=self.saveVideo)
+        filemenu.add_command(label="Save as...", command=self.saveVideoAs)
         filemenu.add_command(label="Settings", command=self.windowsSettings)
         filemenu.add_command(label="Exit", command=self.master.quit)
         self.menuBar.add_cascade(label="File", menu=filemenu)
@@ -298,14 +311,15 @@ class FUTOTAL:
         app.geometry("500x460")
         color = "#%02x%02x%02x" % (66, 162, 80)
 
-        #app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
+
+        # app.tk.call('wm', 'iconphoto', app._w, tk.PhotoImage(file=r'.\data\dp11.gif'))
         app.iconbitmap(r'.\data\dp11.ico')
         m1 = tk.PanedWindow(app, orient=tk.VERTICAL)
         m1.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
-        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL,height=30)
+        m2 = tk.PanedWindow(m1, orient=tk.VERTICAL, height=30)
         m1.add(m2)
         m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m2, text='Duration in frames:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m2, text='Duration in frames:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
         m3 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m1.add(m3)
         m3.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -319,7 +333,9 @@ class FUTOTAL:
         m6.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
         tk.Label(m6, text='Arrow of Pass:').pack(side=tk.LEFT)
         var = tk.DoubleVar(value=2)
-        w1 = tk.Spinbox(m6, from_=0, to=1000,width=5, textvariable=var)
+
+        w1 = tk.Spinbox(m6, from_=0, to=1000, width=5, textvariable=var)
+
         w1.pack(side=tk.RIGHT)
 
         m8 = tk.PanedWindow(m4, orient=tk.VERTICAL)
@@ -367,7 +383,8 @@ class FUTOTAL:
         m15 = tk.PanedWindow(m13, orient=tk.VERTICAL, height=30)
         m13.add(m15)
         m15.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+
+        tk.Label(m15, text='Opacity of objects:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
 
         m16 = tk.PanedWindow(m13, orient=tk.VERTICAL)
         m13.add(m16)
@@ -432,7 +449,9 @@ class FUTOTAL:
         m20 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m20)
         m20.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-        tk.Label(m20, text='Text of Player:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+
+        tk.Label(m20, text='Text of Player:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+
         m24 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m24)
         m24.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -450,7 +469,10 @@ class FUTOTAL:
         tk.Label(m28, text='Type:').pack(side=tk.LEFT)
         var = tk.StringVar()
         var.set("Helvetica")
-        data = ("System","Terminal","Fixedsys","Modern","Helvetica","Roman","Script","Courier","MS Serif","MS Sans Serif","Small Fonts","Marlett","Arial","Calibri","Consolas")
+
+        data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
+                "MS Sans Serif", "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
+
         w = Combobox(m28, values=data)
         w.current(0)
         w.pack(side=tk.RIGHT)
@@ -485,7 +507,8 @@ class FUTOTAL:
         m14.add(m26)
         m26.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        tk.Label(m26, text='Text Box:',font='Helvetica 14 bold',fg=color).pack(side=tk.LEFT)
+        tk.Label(m26, text='Text Box:', font='Helvetica 14 bold', fg=color).pack(side=tk.LEFT)
+
         m25 = tk.PanedWindow(m14, orient=tk.VERTICAL, height=30)
         m14.add(m25)
         m25.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
@@ -503,7 +526,9 @@ class FUTOTAL:
         tk.Label(m31, text='Type:').pack(side=tk.LEFT)
         var = tk.StringVar()
         var.set("Helvetica")
-        data = ("System", "Terminal", "Fixedsys", "Modern","Helvetica", "Roman", "Script", "Courier", "MS Serif", "MS Sans Serif",
+        data = ("System", "Terminal", "Fixedsys", "Modern", "Helvetica", "Roman", "Script", "Courier", "MS Serif",
+                "MS Sans Serif",
+
                 "Small Fonts", "Marlett", "Arial", "Calibri", "Consolas")
         w = Combobox(m31, values=data)
         w.current(0)
@@ -548,6 +573,12 @@ class FUTOTAL:
             self.screenshot_folder = ""
             self.screenshot = False
 
+    def saveVideoAs(self):
+        ftypes = [("*.avi", "*.avi"), ("*.mp4", "*.mp4"), ("*.wmv", "*.wmv")]
+        self.saveVideo_folder = filedialog.asksaveasfilename(filetypes=ftypes, defaultextension='.avi')
+        src= self.output_name
+        shutil.copy(src, self.saveVideo_folder)
+
     def createMenuLeft(self):
         m1 = tk.PanedWindow()
         m1.pack(fill=tk.BOTH, expand=0, side=tk.LEFT)
@@ -561,11 +592,6 @@ class FUTOTAL:
         m2 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m1.add(m2)
         m2.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
-
-
-
-
-
 
         # Creating a photoimage object to use image
 
@@ -581,7 +607,6 @@ class FUTOTAL:
         self.quadrado_drop = tk.PhotoImage(file=r'./data/quadrado.png')
         self.elipse_drop = tk.PhotoImage(file=r'./data/elipse.png')
 
-        
         # here, image option is used to
         # set image on button
         self.Icon = tk.Button(m20, text="SelectPlayer", image=self.icon, command=self.selectONOFF, compound="top")
@@ -593,10 +618,11 @@ class FUTOTAL:
         m2.add(m30)
         m30.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Line = tk.Button(m30, text="Draw Line\nBetween players", image=self.line, command=self.lineONOFF, compound="top")
+        self.Line = tk.Button(m30, text="Draw Line\nBetween players", image=self.line, command=self.lineONOFF,
+                              compound="top")
         self.Line.pack(fill=tk.BOTH, side=tk.LEFT)
         CreateToolTip(self.Line, text='Click on the player where the line will start.\n'
-                                     'Then click on the second player where the line will end.')
+                                      'Then click on the second player where the line will end.')
 
         self.Line_Drop = tk.Button(m30, text="Drop\nLine", image=self.rubber, command=self.line_dropONOFF,
                                    compound="top")
@@ -610,23 +636,25 @@ class FUTOTAL:
         self.Polly = tk.Button(m31, text="Draw Area\nBetween players", image=self.polly, command=self.pollyONOFF,
                                compound="top")
         self.Polly.pack(fill=tk.BOTH, side=tk.LEFT)
-        CreateToolTip(self.Polly, text='Draw area between players\nClick on the players that will be part of the polygon.')
+        CreateToolTip(self.Polly,
+                      text='Draw area between players\nClick on the players that will be part of the polygon.')
         self.Polly_Drop = tk.Button(m31, text="Drop\nArea", image=self.rubber,
-                                    command=self.polly_dropONOFF,compound="top")
+                                    command=self.polly_dropONOFF, compound="top")
         self.Polly_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
-        CreateToolTip(self.Polly_Drop, text='Remove area between playeres\nClick on the polygon player you want to remove.')
+        CreateToolTip(self.Polly_Drop,
+                      text='Remove area between playeres\nClick on the polygon player you want to remove.')
 
         m32 = tk.PanedWindow(m1, orient=tk.VERTICAL)
         m2.add(m32)
         m32.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.Seta = tk.Button(m32, text="Draw\nMovement", image=self.seta, command=self.setaONOFF, compound="top")
-        self.Seta.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Seta.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Seta, text='Click on the exact spot where the movement starts.\n'
-                                       'And then click on the place where it ends.')
+                                      'And then click on the place where it ends.')
 
         self.Seta_Drop = tk.Button(m32, text="Drop\nMove", image=self.rubber, command=self.seta_dropONOFF,
-                                        compound="top")
+                                   compound="top")
         self.Seta_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Seta_Drop, text='Click on the area that you want to drop')
 
@@ -634,13 +662,14 @@ class FUTOTAL:
         m2.add(m33)
         m33.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Seta_Passe = tk.Button(m33, text="Draw\nPass", image=self.seta_yellow, command=self.seta_passeONOFF,compound="top")
-        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Seta_Passe = tk.Button(m33, text="Draw\nPass", image=self.seta_yellow, command=self.seta_passeONOFF,
+                                    compound="top")
+        self.Seta_Passe.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Seta_Passe, text='Click on the exact spot where the pass starts.\n'
-                                             'And then click on the place where it ends.')
+                                            'And then click on the place where it ends.')
 
         self.Seta_Passe_Drop = tk.Button(m33, text="Drop\nPass", image=self.rubber, command=self.seta_drop_passeONOFF,
-                                    compound="top")
+                                         compound="top")
         self.Seta_Passe_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Seta_Passe_Drop, text='Click on the area that you want to drop')
 
@@ -648,12 +677,14 @@ class FUTOTAL:
         m2.add(m34)
         m34.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
-        self.Quadrado = tk.Button(m34, text="Draw\nRectangle", image=self.quadrado, command=self.quadradoONOFF, compound="top")
-        self.Quadrado.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Quadrado = tk.Button(m34, text="Draw\nRectangle", image=self.quadrado, command=self.quadradoONOFF,
+                                  compound="top")
+        self.Quadrado.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Quadrado, text='Click on the exact place where the square starts.\n'
-                                           'And then click on the point where it ends.')
+                                          'And then click on the point where it ends.')
 
-        self.Quadrado_Drop = tk.Button(m34, text="Drop\n", image=self.rubber, command=self.quadrado_dropONOFF, compound="top")
+        self.Quadrado_Drop = tk.Button(m34, text="Drop\n", image=self.rubber, command=self.quadrado_dropONOFF,
+                                       compound="top")
         self.Quadrado_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Quadrado_Drop, text='Click on the area that you want to drop')
 
@@ -662,11 +693,12 @@ class FUTOTAL:
         m35.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.Elipse = tk.Button(m35, text="Draw\nEllipse", image=self.elipse, command=self.elipseONOFF, compound="top")
-        self.Elipse.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.Elipse.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.Elipse, text='Click on the exact place where the ellipse starts.\n'
-                                         'And then click on the point where it ends.')
+                                        'And then click on the point where it ends.')
 
-        self.Elipse_Drop = tk.Button(m35, text="Drop\n", image=self.rubber, command=self.elipse_dropONOFF, compound="top")
+        self.Elipse_Drop = tk.Button(m35, text="Drop\n", image=self.rubber, command=self.elipse_dropONOFF,
+                                     compound="top")
         self.Elipse_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.Elipse_Drop, text='Click on the ellipse that you want to drop')
 
@@ -675,12 +707,12 @@ class FUTOTAL:
         m36.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
 
         self.TextBox = tk.Button(m36, text="Textbox\n", image=self.textBox, command=self.textBoxONOFF, compound="top")
-        self.TextBox.pack(fill=tk.BOTH, side=tk.LEFT, expand= 1)
+        self.TextBox.pack(fill=tk.BOTH, side=tk.LEFT, expand=1)
         CreateToolTip(self.TextBox, text='Click on the exact spot where the textbox starts.\n'
-                                          'And then click on the exact spot where the textbox ends')
+                                         'And then click on the exact spot where the textbox ends')
 
         self.TextBox_Drop = tk.Button(m36, text="Drop\n", image=self.rubber, command=self.textBox_dropONOFF,
-                                       compound="top")
+                                      compound="top")
         self.TextBox_Drop.pack(fill=tk.BOTH, side=tk.RIGHT)
         CreateToolTip(self.TextBox_Drop, text='Click on the area that you want to drop')
 
@@ -984,7 +1016,8 @@ class FUTOTAL:
         m1.add(m2)
 
         var = tk.StringVar()
-        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0, height=2, font= cv2.FONT_HERSHEY_DUPLEX)
+        labelframes = tk.Label(m2, textvariable=var, relief=tk.RAISED, borderwidth=0, height=2,
+                               font=cv2.FONT_HERSHEY_DUPLEX)
         if (self.isLogo == False):
             var.set("Frames:" + str(self.numframes) + "/" + str(self.length))
         else:
@@ -1038,20 +1071,13 @@ class FUTOTAL:
         global running
         _, frame = self.cap.read()
         # frame = cv2.flip(frame, 0)
+
+
         if self.pause == False:
             self.numframes = self.numframes + 1
-        print(self.numframes)
+
 
         frame = imutils.resize(frame, width=width_screen - 400)
-
-        print(self.pause)
-
-        # cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # Image.fromarray( obj , mode = None )
-        # obj - Objeto com interface de matriz
-        # mode - Modo a ser usado (será determinado a partir do tipo se None) Consulte:
-        # img1=img
-        # img1 = imutils.resize(img1, width=900)
 
         img1 = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -1117,7 +1143,9 @@ class FUTOTAL:
                 overlay_detect = frame.copy()
                 alpha_detect = 0.4
 
-                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
+
                             360,
                             self.color_select, -1, 15)
 
@@ -1126,7 +1154,7 @@ class FUTOTAL:
                 red = str(red)[1:]
                 blue = str(blue)[:len(blue) - 1]
 
-                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                             360,
                             (int(red) - 100, int(green) - 100, int(blue) - 100), 2, 15)
                 frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
@@ -1138,10 +1166,10 @@ class FUTOTAL:
                 if self.pause == True and self.screenshot == False:
                     overlay_detect = frame.copy()
                     alpha_detect = 0.4
-                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                                 360,
                                 (200, 200, 200), -1, 15)
-                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (36, 4), 0, 0,
+                    cv2.ellipse(overlay_detect, (int(bbox[0] + ((bbox[2] - bbox[0]) / 2)), int(bbox[3])), (35, 5), 0, 0,
                                 360,
                                 (100, 100, 100), 2, 15)
                     frame = cv2.addWeighted(overlay_detect, alpha_detect, frame, 1 - alpha_detect, 0)
@@ -1180,8 +1208,9 @@ class FUTOTAL:
                             print("Player nao encontrado")
 
                     else:
-                        cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75, (255, 255, 255),
-                                    1)
+
+                        cv2.putText(frame, str(track.track_id), (int(bbox[0]), int(bbox[1] - 10)), 0, 0.75,
+                                    (255, 255, 255), 1)
 
             self.listbox.delete(0, tk.END)
 
@@ -1241,8 +1270,13 @@ class FUTOTAL:
                         x_new_player2 = self.objects_positions_x_min[player2] + (
                                 (self.objects_positions_x_max[player2] - self.objects_positions_x_min[player2]) / 2)
 
-                        cv2.line(frame, (int(x_new_player1), self.objects_positions_y_max[player1]),
+                        overlay_line = frame.copy()
+                        alpha_line = 0.6
+                        cv2.line(overlay_line, (int(x_new_player1), self.objects_positions_y_max[player1]),
                                  (int(x_new_player2), self.objects_positions_y_max[player2]), self.color_line, 5)
+
+                        frame = cv2.addWeighted(overlay_line, alpha_line, frame, 1 - alpha_line, 0)
+
                 cont_line_player1_id = cont_line_player1_id + 1
                 cont_line_player2_id = cont_line_player2_id + 1
 
@@ -1267,7 +1301,7 @@ class FUTOTAL:
                     color = self.color_movement
                     thickness = 4
                     tipLength = 0.1
-                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 40:
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 100:
                         overlay_arrow = frame.copy()
                         alpha_arrow = 0.4
                         cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
@@ -1277,13 +1311,15 @@ class FUTOTAL:
                     color = self.color_passed
                     thickness = 5
                     tipLength = 0.1
-                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 40:
+                    if int(self.numframes) - int(self.frame_arrow_create[contador_setas]) < 100:
                         overlay_arrow = frame.copy()
                         alpha_arrow = 0.6
                         cv2.arrowedLine(overlay_arrow, start_point, end_point, color, thickness, tipLength=tipLength)
                         frame = cv2.addWeighted(overlay_arrow, alpha_arrow, frame, 1 - alpha_arrow, 0)
 
                 contador_setas = contador_setas + 1
+
+
 
         # criacao de elipses
         if self.frame_elipse_create[0] != 0:
@@ -1408,10 +1444,9 @@ class FUTOTAL:
                                int(self.coordinates_textBox_y_init[contador_textBox]))
 
                 color = (0, 0, 0)
-                # textInput = "Passe errado do Sergio Ramos"
-                # textInput = input("Text to add.\n")
 
-                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 25:
+
+                if int(self.numframes) - int(self.frame_textBox_create[contador_textBox]) < 50:
                     overlay_textBox = frame.copy()
                     alpha_textBox = 0.3
                     try:
@@ -1429,6 +1464,10 @@ class FUTOTAL:
 
                 contador_textBox = contador_textBox + 1
 
+        if self.cap.get(cv2.CAP_PROP_FRAME_COUNT) > 1 and self.pause== False:
+            frame = cv2.resize(frame, (self.original_width, self.original_height))
+            self.output.write(frame)
+            frame = imutils.resize(frame, width=width_screen - 400)
 
 
         scale_percent = self.zoom  # percent of original size
@@ -1437,14 +1476,15 @@ class FUTOTAL:
         if self.numframes == 1:
             self.w_zoom = width
             self.h_zoom = height
-        print("Local zoom")
-        print(width)
-        print(height)
+
+
         (rows, cols) = frame.shape[:2]
 
         if self.zoom == 150:
             if self.zona_de_zoom == "top_left":
-                M = np.float32([[1, 0, (cols/6)], [0, 1, (rows/7)]])
+
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, (rows / 10)]])
@@ -1456,7 +1496,9 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right":
-                M = np.float32([[1, 0, -(cols/6)], [0, 1, (rows/7)]])
+
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, (rows / 10)]])
@@ -1468,7 +1510,9 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left":
-                M = np.float32([[1, 0, (cols/6)], [0, 1, -(rows/7)]])
+
+                M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left_medium":
                 M = np.float32([[1, 0, (cols / 6)], [0, 1, -(rows / 10)]])
@@ -1480,7 +1524,8 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, -(rows / 10)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right":
-                M = np.float32([[1, 0, -(cols/6)], [0, 1, -(rows/7)]])
+                M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_medium":
                 M = np.float32([[1, 0, -(cols / 6)], [0, 1, -(rows / 10)]])
@@ -1493,10 +1538,11 @@ class FUTOTAL:
                 frame = cv2.warpAffine(frame, M, (cols, rows))
         if self.zoom == 200:
             if self.zona_de_zoom == "top_left":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, (rows/5)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_medium":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, (rows / 7)]])
+
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_left_center":
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 5)]])
@@ -1505,10 +1551,10 @@ class FUTOTAL:
                 M = np.float32([[1, 0, (cols / 15)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, (rows/5)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_medium":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, (rows/7)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "top_right_center":
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 5)]])
@@ -1517,7 +1563,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, (rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left":
-                M = np.float32([[1, 0, (cols/4)], [0, 1, -(rows/5)]])
+                M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_left_medium":
                 M = np.float32([[1, 0, (cols / 4)], [0, 1, -(rows / 7)]])
@@ -1532,7 +1578,7 @@ class FUTOTAL:
                 M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 5)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_medium":
-                M = np.float32([[1, 0, -(cols/4)], [0, 1, -(rows/7)]])
+                M = np.float32([[1, 0, -(cols / 4)], [0, 1, -(rows / 7)]])
                 frame = cv2.warpAffine(frame, M, (cols, rows))
             if self.zona_de_zoom == "bottom_right_center":
                 M = np.float32([[1, 0, -(cols / 15)], [0, 1, -(rows / 5)]])
@@ -1566,8 +1612,13 @@ class FUTOTAL:
         self.lmain.bind('<Button-1>',
                         self.motion)  # quando alguem clica na tela de jogo o irá imediatamente assionar a funcao self.motion
 
+
         if not self.pause:
-            self.lmain.after(5, self.show_frame)
+            if self.cap.get(cv2.CAP_PROP_POS_FRAMES) < self.cap.get(cv2.CAP_PROP_FRAME_COUNT):
+                self.lmain.after(5, self.show_frame)
+
+
+
 
         # after (pai, ms, função = Nenhum, * args)
         # Parâmetros:
@@ -1576,7 +1627,8 @@ class FUTOTAL:
         # função : que deve ser chamada.
         # * args : outras opções.
 
-    def change_zoom(self,event):
+
+    def change_zoom(self, event):
         self.stop()
         print("Coordenates")
         x = event.x
@@ -1586,37 +1638,41 @@ class FUTOTAL:
             # warpAffine does appropriate shifting given the
             # translation matrix.
 
-            if x < (self.w_zoom / 4) and y<(self.h_zoom/4):
+
+            if x < (self.w_zoom / 4) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_left"
-            elif x < (self.w_zoom / 4)  and y < (self.h_zoom / 2):
+            elif x < (self.w_zoom / 4) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_left_medium"
-            elif x < (self.w_zoom / 2)  and y < (self.h_zoom / 4):
+            elif x < (self.w_zoom / 2) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_left_center"
             elif x > (self.w_zoom / 4) and x < (self.w_zoom / 2) and y > (self.h_zoom / 4) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_left_center_medium"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y < (self.h_zoom / 4):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_right"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y < (self.h_zoom / 2):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y < (self.h_zoom / 2):
                 self.zona_de_zoom = "top_right_medium"
-            elif x > (self.w_zoom / 2)  and y < (self.h_zoom / 4):
+            elif x > (self.w_zoom / 2) and y < (self.h_zoom / 4):
                 self.zona_de_zoom = "top_right_center"
-            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 4) and y < (self.h_zoom / 2):
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 4) and y < (
+                    self.h_zoom / 2):
                 self.zona_de_zoom = "top_right_center_medium"
-            elif x < (self.w_zoom / 4)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left"
-            elif x < (self.w_zoom / 4)  and y > (self.h_zoom / 2):
+            elif x < (self.w_zoom / 4) and y > (self.h_zoom / 2):
                 self.zona_de_zoom = "bottom_left_medium"
-            elif x < (self.w_zoom / 2)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left_center"
-            elif x < (self.w_zoom / 2) and x > (self.w_zoom / 4) and y > (self.h_zoom / 2) and y < (self.h_zoom - (self.h_zoom / 4)):
+            elif x < (self.w_zoom / 2) and x > (self.w_zoom / 4) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_left_center_medium"
             elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right"
-            elif x > (self.w_zoom - (self.w_zoom / 4))  and y > (self.h_zoom / 2):
+            elif x > (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2):
                 self.zona_de_zoom = "bottom_right_medium"
-            elif x > (self.w_zoom / 2)  and y > (self.h_zoom - (self.h_zoom / 4)):
+            elif x > (self.w_zoom / 2) and y > (self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right_center"
-            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2) and y < (self.h_zoom - (self.h_zoom / 4)):
+            elif x > (self.w_zoom / 2) and x < (self.w_zoom - (self.w_zoom / 4)) and y > (self.h_zoom / 2) and y < (
+                    self.h_zoom - (self.h_zoom / 4)):
                 self.zona_de_zoom = "bottom_right_center_medium"
 
             else:
@@ -1655,8 +1711,9 @@ class FUTOTAL:
     def motion(self, event):
         min_x = 0
         min_y = 0
-        x, y = event.x, event.y  # x e y sao igualados ao x clicado no evento e ao y clicado no evento
+        x, y = event.x, event.y - 15  # x e y sao igualados ao x clicado no evento e ao y clicado no evento
         print('{}, {}'.format(x, y))
+        self.pause = True
 
         def arrayLenght(array):
             cont = len(array) - 1
@@ -1774,24 +1831,40 @@ class FUTOTAL:
                 self.num_of_click_arrow = self.num_of_click_arrow + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_arrow_x_final))
+                num = int(arrayLenght(self.frame_arrow_create)-1)
                 self.coordinates_arrow_x_final[num] = x
                 self.coordinates_arrow_y_final[num] = y
                 self.num_of_click_arrow = 0
 
-        if self.seta_dropON == True or self.seta_passe_dropON == True:
+        if self.seta_dropON == True:
             count = 0
             while count < len(self.frame_arrow_create):
-                if self.coordinates_arrow_x_init[count] < x < self.coordinates_arrow_x_final[count] and\
-                        self.coordinates_arrow_y_init[count] < x < self.coordinates_arrow_y_final[count]:
-                    self.coordinates_arrow_x_init[count] = 0
-                    self.coordinates_arrow_x_final[count] = 0
-                    self.coordinates_arrow_y_init[count] = 0
-                    self.coordinates_arrow_y_final[count] = 0
-                    self.frame_arrow_create[count] = 0
+                if self.arrow_type[count] == 1:
+                    if self.coordinates_arrow_x_init[count] <= x <= self.coordinates_arrow_x_final[count] or \
+                            self.coordinates_arrow_x_final[count] <= x <= self.coordinates_arrow_x_init[count]:
+                        if self.coordinates_arrow_y_init[count] <= y <= self.coordinates_arrow_y_final[count] or \
+                                self.coordinates_arrow_y_final[count] <= y <= self.coordinates_arrow_y_init[count]:
+                            self.coordinates_arrow_x_init[count] = 0
+                            self.coordinates_arrow_x_final[count] = 0
+                            self.coordinates_arrow_y_init[count] = 0
+                            self.coordinates_arrow_y_final[count] = 0
 
                 count = count + 1
 
+        if self.seta_passe_dropON == True:
+            count = 0
+            while count < len(self.frame_arrow_create):
+                if self.arrow_type[count] == 2:
+                    if self.coordinates_arrow_x_init[count] <= x <= self.coordinates_arrow_x_final[count] or \
+                            self.coordinates_arrow_x_final[count] <= x <= self.coordinates_arrow_x_init[count]:
+                        if self.coordinates_arrow_y_init[count] <= y <= self.coordinates_arrow_y_final[count] or \
+                                self.coordinates_arrow_y_final[count] <= y <= self.coordinates_arrow_y_init[count]:
+                            self.coordinates_arrow_x_init[count] = 0
+                            self.coordinates_arrow_x_final[count] = 0
+                            self.coordinates_arrow_y_init[count] = 0
+                            self.coordinates_arrow_y_final[count] = 0
+
+                count = count + 1
 
         if self.quadradoON == True:
             if self.num_of_click_rectangle == 0:
@@ -1802,7 +1875,7 @@ class FUTOTAL:
                 self.num_of_click_rectangle = self.num_of_click_rectangle + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_rectangle_x_final))
+                num = int(arrayLenght(self.frame_rectangle_create)-1)
 
                 if x >= self.coordinates_rectangle_x_init[num]:
                     self.coordinates_rectangle_x_final[num] = x
@@ -1818,7 +1891,6 @@ class FUTOTAL:
 
                 self.num_of_click_rectangle = 0
 
-
         if self.quadrado_dropON == True:
             count = 0
             while count < len(self.frame_rectangle_create):
@@ -1828,11 +1900,8 @@ class FUTOTAL:
                     self.coordinates_rectangle_x_final[count] = 0
                     self.coordinates_rectangle_y_init[count] = 0
                     self.coordinates_rectangle_y_final[count] = 0
-                    self.frame_rectangle_create[count] = 0
-
 
                 count = count + 1
-
 
         if self.elipseON == True:
             if self.num_of_click_elipse == 0:
@@ -1843,8 +1912,7 @@ class FUTOTAL:
                 self.num_of_click_elipse = self.num_of_click_elipse + 1
 
             else:
-                num = int(arrayLenght(self.coordinates_elipse_x_final))
-
+                num = int(arrayLenght(self.frame_elipse_create)-1)
 
                 if x >= self.coordinates_elipse_x_init[num]:
                     self.coordinates_elipse_x_final[num] = x
@@ -1865,16 +1933,12 @@ class FUTOTAL:
             while count < len(self.frame_elipse_create):
                 if self.coordinates_elipse_x_init[count] < x < self.coordinates_elipse_x_final[count] and \
                         self.coordinates_elipse_y_init[count] < y < self.coordinates_elipse_y_final[count]:
-
-                    del self.coordinates_elipse_x_init[count]
-                    del self.coordinates_elipse_x_final[count]
-                    del self.coordinates_elipse_y_init[count]
-                    del self.coordinates_elipse_y_final[count]
-                    del self.frame_elipse_create[count]
+                    self.coordinates_elipse_x_init[count] = 0
+                    self.coordinates_elipse_x_final[count] = 0
+                    self.coordinates_elipse_y_init[count] = 0
+                    self.coordinates_elipse_y_final[count] = 0
 
                 count = count + 1
-
-
 
         if self.textBoxON == True:
             self.num = int(arrayLenght(self.frame_textBox_create))
@@ -1891,18 +1955,22 @@ class FUTOTAL:
 
         if self.textBox_dropON == True:
             count = 0
-            while count < len(self.frame_textBox_create):
-                if self.coordinates_textBox_x_init[count] < x < self.coordinates_textBox_x_init[count]+40 and \
-                        self.coordinates_textBox_y_init[count] < y < self.coordinates_textBox_y_init[count]+30:
+            try:
+                while count < len(self.frame_textBox_create):
+                    if self.coordinates_textBox_x_init[count] < x < self.coordinates_textBox_x_init[count] + 150 and \
+                            self.coordinates_textBox_y_init[count] - 30 < y < self.coordinates_textBox_y_init[count] + 20:
+                        del self.coordinates_textBox_x_init[count]
+                        del self.coordinates_textBox_y_init[count]
+                        del self.coordinates_textBox_text[count]
+                        del self.frame_arrow_create[count]
 
-                    del self.coordinates_textBox_x_init[count]
-                    del self.coordinates_textBox_y_init[count]
-                    del self.frame_textBox_create[count]
+                    count = count + 1
+            except:
+                print("No textBox exists")
 
 
-                count = count + 1
-
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+        if self.cap.get(cv2.CAP_PROP_POS_FRAMES) > 1:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
         self.show_frame()
 
     def saveTextBox(self):
@@ -2267,8 +2335,9 @@ class FUTOTAL:
 
     def stop(self):
         self.pause = True
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
-        self.show_frame()
+        if self.cap.get(cv2.CAP_PROP_POS_FRAMES) < self.cap.get(cv2.CAP_PROP_FRAME_COUNT):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.numframes - 1)
+            self.show_frame()
 
     def open_video(self):
         self.filename = askopenfilename(title="Select file", filetypes=(("*.mp4", "*.mp4"),
@@ -2285,6 +2354,19 @@ class FUTOTAL:
             self.isLogo = False
             self.numframes = 0
 
+            self.original_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.original_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            # FPS of original video
+            property_fps = int(cv2.CAP_PROP_FPS)
+            self.orignal_fps = int(cv2.VideoCapture.get(self.cap, property_fps))
+
+            codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
+
+            self.output_name = FLAGS.output+"output.avi"
+            self.output = cv2.VideoWriter(self.output_name, codec, 15,
+                                          (self.original_width, self.original_height))
+
             self.clean_arrays()
 
         self.show_frame()
@@ -2299,7 +2381,7 @@ class FUTOTAL:
         self.start()
 
     def selectFrameScale(self, v):
-        print("572: clicar no scale no")
+        print("Clicar no scale no")
         print(v)
         if (int(v) - self.numframes) > 20:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, int(v))
